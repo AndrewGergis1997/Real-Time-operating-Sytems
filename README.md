@@ -1,22 +1,6 @@
 # COMP.CE.460 Real-time systems
 
 --------------------------------------------------------------------------------
-## Important Notice about LFS
-
-This project uses a Git extension for versioning large binary files called [Git Large File Storage][git-lfs].
-
-Every clone of this repository **MUST** initialize the Git LFS extension. Immediately after a clone operation, inside the repository, the following command **MUST** be issued:
-
-~~~bash
-git lfs install
-~~~
-
-The above command will setup the correct *hooks* in the <u>local copy</u> of the repository: these *hooks* will automate the use of the LFS extension, so that, transparently, using the usual workflow of `git add`/`git commit`/`git push`, a selection of the files will be stored differently.
-
-The course VM already includes all the required dependencies to use this extension.
-
---------------------------------------------------------------------------------
-
 ## Quick guide to resume your work after rebooting the VM
 
 If you are using HTTPS remotes, you might want to run `git config --global credential.helper 'cache --timeout=3600'` before cloning: this way you will have to input your username and password only after 1 hour without interacting with your remote.
@@ -24,8 +8,6 @@ If you are using HTTPS remotes, you might want to run `git config --global crede
 1. `cd ~`
 2. `git clone --recurse-submodules <STUDENT_REPO_URL> [<LOCAL_CLONE_DIR>]`
    - by default, if you don't specify `<LOCAL_CLONE_DIR>` the local clone will be in `~/NN/`, if for any reason, during the first exercise you used a different name or path, make sure to replicate the one you used previously, or the layers configuration you committed previously will be incorrect;
-3. `cd <LOCAL_CLONE_DIR>; git lfs install && git lfs pull`
-
 
 ## Quick guide to pull new exercise instructions
 
@@ -66,9 +48,8 @@ If you decide to use HTTPS remotes, you might want to run `git config --global c
 If you need training to use Git, visit [Git Course in Plussa][git-plussa].
 
 
-[moodle.COMP.CE.460]: https://moodle.tuni.fi/course/view.php?id=29722
-[git-plussa]: https://plus.tuni.fi/tie-git/summer-2022/
-[course_upstream project]: https://course-gitlab.tuni.fi/comp.ce.460-real-time-systems_2022-2023/course_upstream
-[git-lfs]: https://git-lfs.github.com/
+[moodle.COMP.CE.460]: https://moodle.tuni.fi/course/view.php?id=37443
+[git-plussa]: https://plus.tuni.fi/tie-git/
+[course_upstream project]: https://course-gitlab.tuni.fi/comp.ce.460-real-time-systems_2023-2024/course_upstream
 [semipermanent-ssh-keys]: semipermanent-ssh-keys.md
-[update_from_course_upstream]: https://course-gitlab.tuni.fi/comp.ce.460-real-time-systems_2022-2023/course_upstream/raw/master/scripts/update_from_course_upstream.sh
+[update_from_course_upstream]: https://course-gitlab.tuni.fi/comp.ce.460-real-time-systems_2023-2024/course_upstream/raw/main/scripts/update_from_course_upstream.sh
