@@ -4,3 +4,6 @@
 [submodule "meta-pynq"]
 	path = meta-pynq
 	url = https://course-gitlab.tuni.fi/comp.ce.460-real-time-systems_2023-2024/meta-pynq.git
+[submodule "meta-xilinx"]
+	path = meta-xilinx
+	url = https://github.com/Xilinx/meta-xilinx.git
