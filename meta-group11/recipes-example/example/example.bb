@@ -1,6 +1,7 @@
 SUMMARY = "bitbake-layers recipe"
 DESCRIPTION = "Recipe created by bitbake-layers"
 LICENSE = "MIT"
+PN = "example"
 
 python do_build() {
     bb.plain("***********************************************");
