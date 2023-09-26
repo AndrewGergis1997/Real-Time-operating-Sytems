@@ -13,3 +13,4 @@ In the Xilinx repo and the repo provided by the course staff.
 5
 
 ## 5. What additional applications are installed to the `core-image-minimal` target in the PYNQ support layer?
+busybox, busybox.nosuid, busybox.suid, pidof, pidof.sysvinit, start_getty
