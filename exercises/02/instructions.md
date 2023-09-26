@@ -51,11 +51,11 @@ The username and (very secure) password for the VM account are: `student`/`stude
   - [x] pull the changes published in [course_upstream]
   - [x] update the `meta-pynq` submodule to its latest revision (check the [Git Submodule Manual][Git_Submodules] )
   - [x] consult the *Yocto Reference Manual* about the `DL_DIR` variable, check once more the contents of `/opt/poky_cache/`, and enable this option
-  - [ ] try to build `core-image-minimal` again and verify that the `SSTATE_MIRRORS` and `DL_DIR` are correctly accelerating the build process
-  - [ ] *(optional, but recommended)* prepare a script (e.g., `<STUDENT_REPO_ROOT>/scripts/deploy_images`) to deploy the files needed to boot the PYNQ board on the memory card
-  - [ ] verify the board still boots to the console
-- [ ] read in advance the questions for this exercise and familiarize with the linked resources
-- [ ] create a new Yocto layer `meta-group??` (replacing `??` with your group number)
+  - [x] try to build `core-image-minimal` again and verify that the `SSTATE_MIRRORS` and `DL_DIR` are correctly accelerating the build process
+  - [x] *(optional, but recommended)* prepare a script (e.g., `<STUDENT_REPO_ROOT>/scripts/deploy_images`) to deploy the files needed to boot the PYNQ board on the memory card
+  - [x] verify the board still boots to the console
+- [x] read in advance the questions for this exercise and familiarize with the linked resources
+- [x] create a new Yocto layer `meta-group??` (replacing `??` with your group number)
   - it should be created at `<STUDENT_REPO_ROOT>/`
   - it must be part of the student group repository, **not a separate submodule**
   - add it to the build env configuration
