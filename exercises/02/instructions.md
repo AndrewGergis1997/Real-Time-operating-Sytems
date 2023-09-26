@@ -45,7 +45,7 @@ The username and (very secure) password for the VM account are: `student`/`stude
 
 # Checklist
 
-- [ ] preparations to resume your work
+- [DONE] preparations to resume your work
   - [ ] clone your repository, <u>with its submodules!</u>
     - **Hint**: check the updated instructions in the main README of [course_upstream]
   - [ ] pull the changes published in [course_upstream]
