@@ -59,8 +59,8 @@ The username and (very secure) password for the VM account are: `student`/`stude
   - it should be created at `<STUDENT_REPO_ROOT>/`
   - it must be part of the student group repository, **not a separate submodule**
   - add it to the build env configuration
-- [ ] create a new recipe in the new layer for a simple *Hello World* module (you can use the Yocto template) and configure the layer to append it to the target image
-  - [ ] build, deploy and boot to the console to verify that the new recipe and the new layer are working correctly
+- [x] create a new recipe in the new layer for a simple *Hello World* module (you can use the Yocto template) and configure the layer to append it to the target image
+  - [x] build, deploy and boot to the console to verify that the new recipe and the new layer are working correctly
 - [ ] improve the kernel module from the template
   - it must follow current code style and guidelines
   - it must include metadata for version, authors (<u>both members of the group should be separately reported</u>), license, and description
