@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /hone/student/11/build/tmp/deploy/images/pynq
+cd /home/student/11/build/tmp/deploy/images/pynq
 cp -L boot.bin \
 	u-boot.img \
 	uImage \
