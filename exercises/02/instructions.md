@@ -45,12 +45,12 @@ The username and (very secure) password for the VM account are: `student`/`stude
 
 # Checklist
 
-- [DONE] preparations to resume your work
-  - [ ] clone your repository, <u>with its submodules!</u>
+- [x] preparations to resume your work
+  - [x] clone your repository, <u>with its submodules!</u>
     - **Hint**: check the updated instructions in the main README of [course_upstream]
-  - [ ] pull the changes published in [course_upstream]
-  - [ ] update the `meta-pynq` submodule to its latest revision (check the [Git Submodule Manual][Git_Submodules] )
-  - [ ] consult the *Yocto Reference Manual* about the `DL_DIR` variable, check once more the contents of `/opt/poky_cache/`, and enable this option
+  - [x] pull the changes published in [course_upstream]
+  - [x] update the `meta-pynq` submodule to its latest revision (check the [Git Submodule Manual][Git_Submodules] )
+  - [x] consult the *Yocto Reference Manual* about the `DL_DIR` variable, check once more the contents of `/opt/poky_cache/`, and enable this option
   - [ ] try to build `core-image-minimal` again and verify that the `SSTATE_MIRRORS` and `DL_DIR` are correctly accelerating the build process
   - [ ] *(optional, but recommended)* prepare a script (e.g., `<STUDENT_REPO_ROOT>/scripts/deploy_images`) to deploy the files needed to boot the PYNQ board on the memory card
   - [ ] verify the board still boots to the console
