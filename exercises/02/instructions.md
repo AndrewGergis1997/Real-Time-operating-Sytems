@@ -61,18 +61,18 @@ The username and (very secure) password for the VM account are: `student`/`stude
   - add it to the build env configuration
 - [x] create a new recipe in the new layer for a simple *Hello World* module (you can use the Yocto template) and configure the layer to append it to the target image
   - [x] build, deploy and boot to the console to verify that the new recipe and the new layer are working correctly
-- [ ] improve the kernel module from the template
+- [x] improve the kernel module from the template
   - it must follow current code style and guidelines
   - it must include metadata for version, authors (<u>both members of the group should be separately reported</u>), license, and description
   - it must greet when loading and when unloading
   - it must support a load-time parameter to personalize the default greetings
-- [ ] <u>**remeber to push all your commits to your remote repository**</u>
-- [ ] build, deploy and boot to the console
-- [ ] prepare for TA demonstration
-  - [ ] module load/unload
-  - [ ] module metadata
-  - [ ] load-time parameter
-  - [ ] find the entry for the module in `sysfs`: familiarize with the meaning of the exposed hierarchy pf files in the `sysfs` subdirectory for the module
+- [x] <u>**remeber to push all your commits to your remote repository**</u>
+- [x] build, deploy and boot to the console
+- [x] prepare for TA demonstration
+  - [x] module load/unload
+  - [x] module metadata
+  - [x] load-time parameter
+  - [x] find the entry for the module in `sysfs`: familiarize with the meaning of the exposed hierarchy pf files in the `sysfs` subdirectory for the module
 - [ ] demonstrate to the TA
 - [ ] <u>remember to recover your microSD card before leaving</u>
 
