@@ -73,8 +73,8 @@ The username and (very secure) password for the VM account are: `student`/`stude
   - [x] module metadata
   - [x] load-time parameter
   - [x] find the entry for the module in `sysfs`: familiarize with the meaning of the exposed hierarchy pf files in the `sysfs` subdirectory for the module
-- [ ] demonstrate to the TA
-- [ ] <u>remember to recover your microSD card before leaving</u>
+- [x] demonstrate to the TA
+- [x] <u>remember to recover your microSD card before leaving</u>
 
 
 
