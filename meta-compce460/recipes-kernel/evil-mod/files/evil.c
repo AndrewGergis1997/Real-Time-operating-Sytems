@@ -77,7 +77,7 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
 static struct device_attribute dev_attr_evil = {
     .attr = {
         .name = SYSFS_FILE_ATTR_NAME,
-        .mode = S_IRUGO,
+        .mode = S_IRUGO|S_IWUSR,
     },
     .show = show_evil,
     .store = store_evil,
