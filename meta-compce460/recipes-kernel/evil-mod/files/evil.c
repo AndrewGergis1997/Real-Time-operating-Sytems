@@ -114,11 +114,19 @@ static int32_t __init evil_init(void)
         goto error_sysfs_create;
     }
 
-    // Initialize the tasklet
+    /* Allocate space for the tasklet_struct */
+    tasklet=kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
+    if (tasklet == NULL) {
+        printk(KERN_ERR "EVIL: Failed to allocate space for the tasklet_struct\n");
+        goto error_tasklet_failure;
+    }
+
+    /* Initialize the tasklet */
     tasklet_init(tasklet, do_tasklet, (unsigned long)input_buf);
 
     return 0;
 
+ error_tasklet_failure:
  error_sysfs_create:
     kobject_del(evil_kobj);
  error_kobject_create:
@@ -146,4 +154,6 @@ module_exit(evil_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("The evil kernel module for the Real-time systems course");
 MODULE_AUTHOR("Jan Lipponen <jan.lipponen@wapice.com>");
+MODULE_AUTHOR("Andreas Stergiopoulos <andreas.stergiopoulos@tuni.fi");
+MODULE_AUTHOR("Andrew Gergis <andrew.gergis@tuni.fi");
 MODULE_VERSION("1.0");

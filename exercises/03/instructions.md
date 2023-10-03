@@ -55,13 +55,13 @@ The username and (very secure) password for the VM account are: `student`/`stude
 
 # Checklist
 
-- [ ] preparations to resume your work
-  - [ ] clone your repository, <u>with its submodules!</u>
+- [x] preparations to resume your work
+  - [x] clone your repository, <u>with its submodules!</u>
     - **Hint**: check the updated instructions in the main README of [course_upstream]
-  - [ ] pull the changes published in [course_upstream]
-  - [ ] remember to specify the path for the proper `build` folder when sourcing the Yocto script for setting up the build environment
-  - [ ] add the `meta-compce460` layer to your build configuration
-  - [ ] build `core-image-minimal` once again, to verify that the `SSTATE_MIRRORS` and `DL_DIR` are correctly accelerating the build process
+  - [x] pull the changes published in [course_upstream]
+  - [x] remember to specify the path for the proper `build` folder when sourcing the Yocto script for setting up the build environment
+  - [x] add the `meta-compce460` layer to your build configuration
+  - [x] build `core-image-minimal` once again, to verify that the `SSTATE_MIRRORS` and `DL_DIR` are correctly accelerating the build process
 - [ ] find the `evil` module C source code and the associated testing script: study them to understand what the `evil` module does
 - [ ] add yourselves as additional authors in `evil.c`
 - Reiterate the following **until passing all the steps in `evil-tests`**:
