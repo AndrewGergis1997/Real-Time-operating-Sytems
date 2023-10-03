@@ -3,6 +3,7 @@
 #include <linux/interrupt.h>        // Tasklets
 #include <linux/slab.h>             // kmalloc
 #include <linux/device.h>           // sysfs functions
+#include <linux/mutex.h>	    // Mutexes
 
 #define SYSFS_FILE_ATTR_NAME "evil"
 
@@ -12,6 +13,9 @@
 // Dynamic and static allocation for the sake of example
 char *data_storage = NULL;
 char input_buf[INPUT_BUFSIZE];
+
+/* Mutex that guards access to common variables */
+struct mutex drv_mutex;
 
 struct tasklet_struct* tasklet = NULL;
 int32_t bytes_stored = 0;
@@ -27,6 +31,7 @@ static void do_tasklet(unsigned long data)
         return;
     }
 
+    mutex_lock(&drv_mutex);
     // Replace 'a's with ' ' in the name of evilness
     strreplace((char *)data, 'a', ' ');
 
@@ -38,6 +43,7 @@ static void do_tasklet(unsigned long data)
         bytes_stored += retval+1;
         printk(KERN_INFO "EVIL: bytes stored: %d\n", bytes_stored);
     }
+    mutex_unlock(&drv_mutex);
 }
 
 // The sysfs attribute invoked when writing
@@ -57,6 +63,7 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
     int32_t retval = 0;
 
     // Go through the data storage and write all found strings to the output buffer
+    mutex_lock(&drv_mutex);
     while(1) {
         retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
         if(retval == 0) {
@@ -65,6 +72,7 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
         // Null-character excluded from the sprintf return value so 1 should be added
         bytes += retval+1;
     }
+    mutex_unlock(&drv_mutex);
 
     printk("MUAHAHAHA\n");
 
@@ -120,6 +128,8 @@ static int32_t __init evil_init(void)
         printk(KERN_ERR "EVIL: Failed to allocate space for the tasklet_struct\n");
         goto error_tasklet_failure;
     }
+
+    mutex_init(&drv_mutex);
 
     /* Initialize the tasklet */
     tasklet_init(tasklet, do_tasklet, (unsigned long)input_buf);
