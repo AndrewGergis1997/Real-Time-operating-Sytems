@@ -54,7 +54,7 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
 // The sysfs attribute invoked when reading from the file
 static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char *buf) {
     uint32_t bytes = 0;
-    int32_t retval;
+    int32_t retval = 0;
 
     // Go through the data storage and write all found strings to the output buffer
     while(1) {
