@@ -34,6 +34,12 @@ static void do_tasklet(unsigned long data)
     mutex_lock(&drv_mutex);
     // Replace 'a's with ' ' in the name of evilness
     strreplace((char *)data, 'a', ' ');
+	
+    /* Check if the buffer size can handle it */
+    if(bytes_stored+strlen((char *)data) >= STORAGE_SIZE) {
+        printk(KERN_INFO "EVIL: buffer will overflow\n");
+        return;
+    }
 
     retval = sprintf(&data_storage[bytes_stored], "%s", (char *)data);
     if(retval < 0) {
@@ -48,6 +54,9 @@ static void do_tasklet(unsigned long data)
 
 // The sysfs attribute invoked when writing
 static ssize_t store_evil(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
+    // What is the size that will be passed to input_buf ?
+    // What will happen if the buff data exceeds BUFFER_SIZE ?
+    // Understand how does sprintf work ?
     // Read the user parameters
     sprintf(input_buf, "%s", buf);
 
@@ -64,14 +73,18 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
 
     // Go through the data storage and write all found strings to the output buffer
     mutex_lock(&drv_mutex);
-    while(1) {
-        retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
-        if(retval == 0) {
-            break;
-        }
-        // Null-character excluded from the sprintf return value so 1 should be added
-        bytes += retval+1;
-    }
+//    while(1) {
+//        retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
+        retval = sprintf(buf, "%s", data_storage);
+//        if(retval == -1) {
+//            break;
+//        }
+//	else if(retval == (INPUT_BUFSIZE-1)) {
+//            break;
+//        }
+//        bytes += retval+1;
+	bytes = retval;
+//    }
     mutex_unlock(&drv_mutex);
 
     printk("MUAHAHAHA\n");
@@ -137,6 +150,7 @@ static int32_t __init evil_init(void)
     return 0;
 
  error_tasklet_failure:
+    sysfs_remove_file(evil_kobj, &dev_attr_evil.attr);
  error_sysfs_create:
     kobject_del(evil_kobj);
  error_kobject_create:
@@ -149,10 +163,10 @@ static int32_t __init evil_init(void)
 // The kernel module exit function
 static void __exit evil_exit(void)
 {
-    kfree(tasklet);
     tasklet_kill(tasklet);
-    kobject_del(evil_kobj);
+    kfree(tasklet);
     sysfs_remove_file(evil_kobj, &dev_attr_evil.attr);
+    kobject_del(evil_kobj);
     kfree(data_storage);
 
     printk(KERN_INFO "EVIL: MUAHAHAHA\n");

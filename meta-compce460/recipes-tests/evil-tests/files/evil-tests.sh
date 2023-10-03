@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 
 # Don't trust busybox `tee`!!!!
 
@@ -139,7 +139,7 @@ write_evil
 step "Reading back from \"${EVIL_MODULE_NAME}\" sysfs entry"
 read_evil
 LAST_EXPECTED=${EVIL_TESTS_STEP_COUNTER}.expected ; cat ${LAST_WRITE} null | sed -e 's/a/ /g' > ${LAST_EXPECTED}
-diff -q ${LAST_EXPECTED} ${LAST_READ}
+diff -q ${LAST_EXPECTED} ${LAST_READ}	
 
 ###########################################################
 step "Reading again from \"${EVIL_MODULE_NAME}\" sysfs entry: should be identical"
