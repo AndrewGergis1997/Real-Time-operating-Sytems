@@ -25,7 +25,9 @@ static struct kobject* evil_kobj = NULL;
 static void do_tasklet(unsigned long data)
 {
     int32_t retval;
-
+	printk(KERN_INFO "EVIL: tasklet triggered\n");
+	
+	/* The tasklet expects to read the data from the data_storage pool. */
     if(bytes_stored+strlen((char *)data) >= STORAGE_SIZE-1) {
         printk(KERN_INFO "EVIL: storage full\n");
         return;
@@ -58,10 +60,17 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
     // What will happen if the buff data exceeds BUFFER_SIZE ?
     // Understand how does sprintf work ?
     // Read the user parameters
-    sprintf(input_buf, "%s", buf);
+
+	mutex_lock(&drv_mutex);
+	/* Here we  have a possibility for buffer overflow! */
+	/* Original code didn't use the bytes_stored variabe! */
+    bytes_stored = sprintf(data_storage, "%s", buf);
+
+	if (bytes_stored > 0) bytes_stored++;
 
     // Run a tasklet to perform string manipulation and storing the data
     tasklet_schedule(tasklet);
+	mutex_unlock(&drv_mutex);
 
     return count;
 }
@@ -70,26 +79,26 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
 static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char *buf) {
     uint32_t bytes = 0;
     int32_t retval = 0;
-
-    // Go through the data storage and write all found strings to the output buffer
+    
+    /* I FIGURED THIS OUT: IT IS AN UNBOUNDED READ/buffer overflow! */
+	/* The first time the sprintf is called, it copies the data from the storage 
+	to the output, copying every byte until \n is read. For each call after that, it is
+	not guaranteed that an escape character will be found, so it reads until it 
+	overflows. When it overflows, it is stopped by the memory protection unit 
+	of the CPU. */
+    
     mutex_lock(&drv_mutex);
-//    while(1) {
-//        retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
-        retval = sprintf(buf, "%s", data_storage);
-//        if(retval == -1) {
-//            break;
-//        }
-//	else if(retval == (INPUT_BUFSIZE-1)) {
-//            break;
-//        }
-//        bytes += retval+1;
-	bytes = retval;
-//    }
-    mutex_unlock(&drv_mutex);
+
+	retval = sprintf(buf, "%s", data_storage);
+
+	/* If we copy any bytes, we must account for the terminator that sprintf doesn't count. */
+	if (retval > 0) retval++;
+
+	mutex_unlock(&drv_mutex);
 
     printk("MUAHAHAHA\n");
 
-    return bytes;
+    return retval;
 }
 
 //
@@ -145,7 +154,8 @@ static int32_t __init evil_init(void)
     mutex_init(&drv_mutex);
 
     /* Initialize the tasklet */
-    tasklet_init(tasklet, do_tasklet, (unsigned long)input_buf);
+	/* data_storage is our main data pool, we pass is as an argument to the tasklet. */
+    tasklet_init(tasklet, do_tasklet, (unsigned long)data_storage);
 
     return 0;
 
