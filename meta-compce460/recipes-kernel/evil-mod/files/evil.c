@@ -3,7 +3,7 @@
 #include <linux/interrupt.h>        // Tasklets
 #include <linux/slab.h>             // kmalloc
 #include <linux/device.h>           // sysfs functions
-#include <linux/mutex.h>	    // Mutexes
+#include <linux/mutex.h>	    	// Mutexes
 
 #define SYSFS_FILE_ATTR_NAME "evil"
 
@@ -24,33 +24,33 @@ static struct kobject* evil_kobj = NULL;
 
 static void do_tasklet(unsigned long data)
 {
-    int32_t retval;
+    int32_t retval = 0;
 	printk(KERN_INFO "EVIL: tasklet triggered\n");
 	
 	/* The tasklet expects to read the data from the data_storage pool. */
-    if(bytes_stored+strlen((char *)data) >= STORAGE_SIZE-1) {
+    /*if(bytes_stored+strlen((char *)data) >= STORAGE_SIZE-1) {
         printk(KERN_INFO "EVIL: storage full\n");
         return;
-    }
+    }*/
 
     mutex_lock(&drv_mutex);
     // Replace 'a's with ' ' in the name of evilness
     strreplace((char *)data, 'a', ' ');
 	
     /* Check if the buffer size can handle it */
-    if(bytes_stored+strlen((char *)data) >= STORAGE_SIZE) {
+    /*if(bytes_stored+strlen((char *)data) >= STORAGE_SIZE) {
         printk(KERN_INFO "EVIL: buffer will overflow\n");
         return;
-    }
+    }*/
 
-    retval = sprintf(&data_storage[bytes_stored], "%s", (char *)data);
-    if(retval < 0) {
+    //retval = sprintf(&data_storage[bytes_stored], "%s", (char *)data);
+    /*if(retval < 0) {
         printk(KERN_ERR "EVIL: sprintf failed\n");
     } else {
         // Null-character excluded from the sprintf return value so 1 should be added
         bytes_stored += retval+1;
-        printk(KERN_INFO "EVIL: bytes stored: %d\n", bytes_stored);
-    }
+        printk(KERN_INFO "EVIL: tasklet handled %d bytes\n", bytes_stored);
+    }*/
     mutex_unlock(&drv_mutex);
 }
 
@@ -68,8 +68,8 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
 	/* Original code didn't use the bytes_stored variabe! */
 	
 	/* First let's check if the input can fit in the storage pool: */ 
-	if (bytes_stored + strlen(buf) + 1 < STORAGE_SIZE) {
-		printk(KERN_INFO "EVIL: Storage overflow, write rejected!\n");
+	if (bytes_stored + strlen(buf) + 1 > STORAGE_SIZE) {
+		printk(KERN_ERR "EVIL: Storage overflow, write rejected!\n");
 		return 0;
 	}
     
@@ -80,24 +80,30 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
 	 * 	-> Negative if it fails to copy the string
 	 * 	-> Zero if the string was empty
 	 * 	-> Number of CHARACTERS copied if copy is successful (TERMINATION 
-	 * 		CHARACTER NOT INCLUDED! */
-	int ret_val = sprintf(&data_storage[bytes_stored], "%s", buf);
+	 * 		CHARACTER NOT INCLUDED!) */
+	int retval = 0;
+	retval = sprintf(&data_storage[bytes_stored], "%s", buf);
 	
 	/* If we fail to copy the string we should notify, else hust account
 	for the termination character. */
-	if (ret_val < 0) {
-		printk(KERN_INFO "EVIL: Failed to copy input to data storage\n");
+	if (retval < 0) {
+		printk(KERN_ERR "EVIL: Failed to copy input to data storage\n");
 	}
-	else if (ret_val > 0) bytes_stored++;
+	else if (retval > 0) {
+		retval++;
+		bytes_stored = retval;
+		printk(KERN_INFO "EVIL: stored %d bytes\n", retval);
+	}
+	
+	/* DANGER: MUTEX SHOULD BE GUARANTEED TO BE RELEASED NO MATTER THE EXIT
+	POINT OF THE FUNCTION! */
+	/* We are done manipulating the common variables, release the mutex. */
+	mutex_unlock(&drv_mutex);
 
     // Run a tasklet to perform string manipulation and storing the data
     tasklet_schedule(tasklet);
 
-	/* DANGER: MUTEX SHOULD BE GUARANTEED TO BE RELEASED NO MATTER THE EXIT
-	POINT OF THE FUNCTION! */
-	mutex_unlock(&drv_mutex);
-
-    return count;
+    return retval;
 }
 
 // The sysfs attribute invoked when reading from the file
@@ -107,22 +113,33 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
     
     /* I FIGURED THIS OUT: IT IS AN UNBOUNDED READ/buffer overflow! */
 	/* The first time the sprintf is called, it copies the data from the storage 
-	to the output, copying every byte until \n is read. For each call after that, it 		is not guaranteed that an escape character will be found, so it reads until it 
+	to the output, copying every byte until \n is read. For each call after that, 
+	it is not guaranteed that an escape character will be found, so it reads until it 
 	overflows. When it overflows, it is stopped by the memory protection unit 
 	of the CPU. */
     
     mutex_lock(&drv_mutex);
 
-	retval = sprintf(buf, "%s", data_storage);
+	int i = 0;		/* Counter */
+	int j = 0;		/* Holds the position of the previous terminating character */
+	while (i < bytes_stored) {
+		/* If you find a termination character... */
+		if (data_storage[i] == '\0') {
+			retval = sprintf(buf, "%s",&data_storage[j]);
+			j += retval + 1;
+		}
+		i++;
+	}
+	//retval = 
 
 	/* If we copy any bytes, we must account for the terminator that sprintf doesn't count. */
-	if (retval > 0) retval++;
+	//if (retval > 0) retval++;
 
 	mutex_unlock(&drv_mutex);
 
     printk("MUAHAHAHA\n");
 
-    return retval;
+    return j;
 }
 
 //
@@ -184,8 +201,8 @@ static int32_t __init evil_init(void)
     return 0;
 
  error_tasklet_failure:
-    sysfs_remove_file(evil_kobj, &dev_attr_evil.attr);
  error_sysfs_create:
+	sysfs_remove_file(evil_kobj, &dev_attr_evil.attr);
     kobject_del(evil_kobj);
  error_kobject_create:
     kfree(data_storage);
