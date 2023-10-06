@@ -61,15 +61,40 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
     // Understand how does sprintf work ?
     // Read the user parameters
 
-	mutex_lock(&drv_mutex);
+	/* In the write function, consecutive writes should be saved the one after
+	the other. The way this code is implemented, each write overwrites the previous
+	one. */
 	/* Here we  have a possibility for buffer overflow! */
 	/* Original code didn't use the bytes_stored variabe! */
-    bytes_stored = sprintf(data_storage, "%s", buf);
+	
+	/* First let's check if the input can fit in the storage pool: */ 
+	if (bytes_stored + strlen(buf) + 1 < STORAGE_SIZE) {
+		printk(KERN_INFO "EVIL: Storage overflow, write rejected!\n");
+		return 0;
+	}
+    
+	/* If we can place the data in the storage, lock the mutex: */
+	mutex_lock(&drv_mutex);
 
-	if (bytes_stored > 0) bytes_stored++;
+	/* sprintf has 3 return cases:
+	 * 	-> Negative if it fails to copy the string
+	 * 	-> Zero if the string was empty
+	 * 	-> Number of CHARACTERS copied if copy is successful (TERMINATION 
+	 * 		CHARACTER NOT INCLUDED! */
+	int ret_val = sprintf(&data_storage[bytes_stored], "%s", buf);
+	
+	/* If we fail to copy the string we should notify, else hust account
+	for the termination character. */
+	if (ret_val < 0) {
+		printk(KERN_INFO "EVIL: Failed to copy input to data storage\n");
+	}
+	else if (ret_val > 0) bytes_stored++;
 
     // Run a tasklet to perform string manipulation and storing the data
     tasklet_schedule(tasklet);
+
+	/* DANGER: MUTEX SHOULD BE GUARANTEED TO BE RELEASED NO MATTER THE EXIT
+	POINT OF THE FUNCTION! */
 	mutex_unlock(&drv_mutex);
 
     return count;
@@ -82,8 +107,7 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
     
     /* I FIGURED THIS OUT: IT IS AN UNBOUNDED READ/buffer overflow! */
 	/* The first time the sprintf is called, it copies the data from the storage 
-	to the output, copying every byte until \n is read. For each call after that, it is
-	not guaranteed that an escape character will be found, so it reads until it 
+	to the output, copying every byte until \n is read. For each call after that, it 		is not guaranteed that an escape character will be found, so it reads until it 
 	overflows. When it overflows, it is stopped by the memory protection unit 
 	of the CPU. */
     
