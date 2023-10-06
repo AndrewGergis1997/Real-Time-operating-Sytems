@@ -74,7 +74,9 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
 	}
     
 	/* If we can place the data in the storage, lock the mutex: */
-	mutex_lock(&drv_mutex);
+	//mutex_lock(&drv_mutex);
+
+	printk(KERN_INFO "EVIL: Preparing to write %d characters into storage...\n", strlen(buf));
 
 	/* sprintf has 3 return cases:
 	 * 	-> Negative if it fails to copy the string
@@ -84,21 +86,22 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
 	int retval = 0;
 	retval = sprintf(&data_storage[bytes_stored], "%s", buf);
 	
-	/* If we fail to copy the string we should notify, else hust account
+	/* If we fail to copy the string we should notify, else must account
 	for the termination character. */
 	if (retval < 0) {
 		printk(KERN_ERR "EVIL: Failed to copy input to data storage\n");
 	}
 	else if (retval > 0) {
 		retval++;
-		bytes_stored = retval;
-		printk(KERN_INFO "EVIL: stored %d bytes\n", retval);
+		bytes_stored += retval;
+		printk(KERN_INFO "EVIL: Stored %d bytes\n", retval);
 	}
+	else printk(KERN_INFO "EVIL: Stored 0 bytes\n");
 	
 	/* DANGER: MUTEX SHOULD BE GUARANTEED TO BE RELEASED NO MATTER THE EXIT
 	POINT OF THE FUNCTION! */
 	/* We are done manipulating the common variables, release the mutex. */
-	mutex_unlock(&drv_mutex);
+	//mutex_unlock(&drv_mutex);
 
     // Run a tasklet to perform string manipulation and storing the data
     tasklet_schedule(tasklet);
@@ -111,35 +114,33 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
     uint32_t bytes = 0;
     int32_t retval = 0;
     
-    /* I FIGURED THIS OUT: IT IS AN UNBOUNDED READ/buffer overflow! */
 	/* The first time the sprintf is called, it copies the data from the storage 
 	to the output, copying every byte until \n is read. For each call after that, 
 	it is not guaranteed that an escape character will be found, so it reads until it 
 	overflows. When it overflows, it is stopped by the memory protection unit 
 	of the CPU. */
     
-    mutex_lock(&drv_mutex);
+    //mutex_lock(&drv_mutex);
 
 	int i = 0;		/* Counter */
 	int j = 0;		/* Holds the position of the previous terminating character */
 	while (i < bytes_stored) {
 		/* If you find a termination character... */
 		if (data_storage[i] == '\0') {
-			retval = sprintf(buf, "%s",&data_storage[j]);
-			j += retval + 1;
+			retval += sprintf(buf, "%s",&data_storage[j]) + 1;
+			j += i + 1;
 		}
 		i++;
 	}
-	//retval = 
 
 	/* If we copy any bytes, we must account for the terminator that sprintf doesn't count. */
 	//if (retval > 0) retval++;
 
-	mutex_unlock(&drv_mutex);
+	//mutex_unlock(&drv_mutex);
 
     printk("MUAHAHAHA\n");
 
-    return j;
+    return retval;
 }
 
 //
