@@ -3,7 +3,6 @@
 #include <linux/interrupt.h>        // Tasklets
 #include <linux/slab.h>             // kmalloc
 #include <linux/device.h>           // sysfs functions
-#include <linux/mutex.h>			// Mutexes
 #include <linux/uaccess.h> 			// Copy from userland
 
 #define SYSFS_FILE_ATTR_NAME "evil"
@@ -11,18 +10,13 @@
 #define STORAGE_SIZE PAGE_SIZE // DON'T CHANGE IN FINAL REVISION
 #define INPUT_BUFSIZE 1000     // DON'T CHANGE IN FINAL REVISION
 
-//TODO: Check the tasklet, consecutive writes are not registered in the main buffer.
-
-
 // Dynamic and static allocation for the sake of example
 char *data_storage = NULL;
 char input_buf[INPUT_BUFSIZE];
 
-/* Mutex that guards access to common variables */
-struct mutex drv_mutex;
-
 struct tasklet_struct* tasklet = NULL;
 int32_t bytes_stored = 0;
+
 // A standalone kobject for a sysfs entry
 static struct kobject* evil_kobj = NULL;
 
@@ -37,15 +31,8 @@ static void do_tasklet(unsigned long data)
         return;
     }
 
-    mutex_lock(&drv_mutex);
     // Replace 'a's with ' ' in the name of evilness
     strreplace((char *)data, 'a', ' ');
-	
-    /* Check if the buffer size can handle it */
-    if(bytes_stored+strlen((char *)data) >= STORAGE_SIZE) {
-        printk(KERN_INFO "EVIL: buffer will overflow\n");
-        return;
-    }
 
     retval = sprintf(&data_storage[bytes_stored], "%s", (char *)data);
 	printk(KERN_INFO "EVIL: data written in position: %d\n", bytes_stored);
@@ -56,51 +43,40 @@ static void do_tasklet(unsigned long data)
 	else if (retval > 0) {
         // Null-character excluded from the sprintf return value so 1 should be added
         bytes_stored += retval+1;
-		/* DON'T TOUCH THIS LINE!!!!! NO! SHOO!!!!! */
         printk(KERN_INFO "EVIL: bytes stored: %d\n", bytes_stored);
     }
-    mutex_unlock(&drv_mutex);
 
 }
 
 // The sysfs attribute invoked when writing
 static ssize_t store_evil(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
-    // What is the size that will be passed to input_buf ?
-    // What will happen if the buff data exceeds BUFFER_SIZE ?
-    // Understand how does sprintf work ?
-    // Read the user parameters
-
+	
 	/* The main logic for this function is that we take the data from the  
 	input buffer of the OS and save them in the intermediary input_buffer  
 	from which the tasklet is going to pull the data and manipulate them.*/
 
 	if (strlen(buf) + 1 > INPUT_BUFSIZE) {
 		printk(KERN_ERR "EVIL: ERROR: too much data, buffer will overflow\n");
-		return -EINVAL;
+		return -EINVAL;		/* Write failure constant */
 	}
 
 	printk(KERN_INFO "EVIL: Preparing to write %d characters into buffer...\n", strlen(buf));
 	
-	//mutex_lock(&drv_mutex);
 	int retval = 0;
 	int bytes = 0;
 	retval = copy_from_user(input_buf, buf, INPUT_BUFSIZE);
 
 	if (retval != 0) {
 		printk(KERN_ERR "EVIL: copy_from_user failed to copy to input_buf\n");
-		//mutex_unlock(&drv_mutex);
 	}
 	else {
 		
 		printk(KERN_INFO "EVIL: %d characters written into buffer...\n", strlen(input_buf));
 		bytes = strlen(input_buf) + 1;
 		tasklet_schedule(tasklet);
-		//mutex_unlock(&drv_mutex);
 	}
 	
-	/* DON'T TOUCH THIS!!! NOOOO! SHOO!
-	 *
-	 * When reading from the input buffer, Linux expects the process to consume all the 
+	/* When reading from the input buffer, Linux expects the process to consume all the 
 	 * products of the buffer and will keep calling store again and again until all the 
 	 * data in the buffer has been consumed. For this reason, we must return the count
 	 * variable which is the size in bytes of the process input buffer. */
@@ -127,19 +103,8 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
         bytes = retval;
     }
 
-    //retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
-
 	printk("MUAHAHAHA\n");
 	return bytes;
-	
-	/*if(retval == 0) {
-		return 0;
-    }
-	else {
-		// Null-character excluded from the sprintf return value so 1 should be added
-		bytes += retval+1;
-		return bytes;
-	}*/
 	
 }
 
@@ -193,7 +158,6 @@ static int32_t __init evil_init(void)
         goto error_tasklet_failure;
     }
 
-    mutex_init(&drv_mutex);
 
     /* Initialize the tasklet */
 	/* input_buf is our input buffer, we pass is as an argument to the tasklet. */
