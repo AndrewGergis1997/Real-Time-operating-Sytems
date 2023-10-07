@@ -74,23 +74,28 @@ static ssize_t store_evil(struct device *dev, struct device_attribute *attr, con
 	input buffer of the OS and save them in the intermediary input_buffer  
 	from which the tasklet is going to pull the data and manipulate them.*/
 
+	if (strlen(buf) + 1 > INPUT_BUFSIZE) {
+		printk(KERN_ERR "EVIL: ERROR: too much data, buffer will overflow\n");
+		return -EINVAL;
+	}
+
 	printk(KERN_INFO "EVIL: Preparing to write %d characters into buffer...\n", strlen(buf));
 	
-	mutex_lock(&drv_mutex);
+	//mutex_lock(&drv_mutex);
 	int retval = 0;
 	int bytes = 0;
 	retval = copy_from_user(input_buf, buf, INPUT_BUFSIZE);
 
 	if (retval != 0) {
 		printk(KERN_ERR "EVIL: copy_from_user failed to copy to input_buf\n");
-		mutex_unlock(&drv_mutex);
+		//mutex_unlock(&drv_mutex);
 	}
 	else {
 		
 		printk(KERN_INFO "EVIL: %d characters written into buffer...\n", strlen(input_buf));
 		bytes = strlen(input_buf) + 1;
 		tasklet_schedule(tasklet);
-		mutex_unlock(&drv_mutex);
+		//mutex_unlock(&drv_mutex);
 	}
 	
 	/* DON'T TOUCH THIS!!! NOOOO! SHOO!
