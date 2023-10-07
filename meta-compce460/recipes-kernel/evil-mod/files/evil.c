@@ -48,6 +48,8 @@ static void do_tasklet(unsigned long data)
     }
 
     retval = sprintf(&data_storage[bytes_stored], "%s", (char *)data);
+	printk(KERN_INFO "EVIL: data written in position: %d\n", bytes_stored);
+
     if(retval < 0) {
         printk(KERN_ERR "EVIL: sprintf failed\n");
     } 
@@ -106,28 +108,33 @@ static ssize_t show_evil(struct device *dev, struct device_attribute *attr, char
     int32_t retval = 0;
 
     // Go through the data storage and write all found strings to the output buffer
-    //mutex_lock(&drv_mutex);
-    /*while(1) {
+    while(retval < bytes_stored) {
         retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
-        if(retval == 0) {
-            break;
-        }
-        // Null-character excluded from the sprintf return value so 1 should be added
-        bytes += retval+1;
-    }*/
+		
+        if(retval == 0) break;				/* If the return value is zero then exit loop */
+		else if (retval > 0) retval++;		/* If it is positive, account for the termination character */
+        else {								/* If it is negative, report failure and exit loop */
+			printk(KERN_ERR "EVIL: failed to copy to output buffer\n");
+			break;
+		}
+		
+		// Null-character excluded from the sprintf return value so 1 should be added
+        bytes = retval;
+    }
 
-    retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
+    //retval += sprintf(&buf[bytes], "%s", &data_storage[bytes]);
 
 	printk("MUAHAHAHA\n");
+	return bytes;
 	
-	if(retval == 0) {
+	/*if(retval == 0) {
 		return 0;
     }
 	else {
 		// Null-character excluded from the sprintf return value so 1 should be added
 		bytes += retval+1;
 		return bytes;
-	}
+	}*/
 	
 }
 
