@@ -62,13 +62,13 @@ The username and (very secure) password for the VM account are: `student`/`stude
   - [x] remember to specify the path for the proper `build` folder when sourcing the Yocto script for setting up the build environment
   - [x] add the `meta-compce460` layer to your build configuration
   - [x] build `core-image-minimal` once again, to verify that the `SSTATE_MIRRORS` and `DL_DIR` are correctly accelerating the build process
-- [ ] find the `evil` module C source code and the associated testing script: study them to understand what the `evil` module does
-- [ ] add yourselves as additional authors in `evil.c`
+- [x] find the `evil` module C source code and the associated testing script: study them to understand what the `evil` module does
+- [x] add yourselves as additional authors in `evil.c`
 - Reiterate the following **until passing all the steps in `evil-tests`**:
-  - [ ] boot the PYNQ board, login to the console (usr:`root`, no passwd), load the `evil` module and run the `evil-tests` script
-  - [ ] edit (**only!!!**) `evil.c`
-  - [ ] rebuild `core-image-minimal` and deploy the updated images to the microSD card
-- [ ] <u>**remeber to push all your commits to your remote repository**</u>
+  - [x] boot the PYNQ board, login to the console (usr:`root`, no passwd), load the `evil` module and run the `evil-tests` script
+  - [x] edit (**only!!!**) `evil.c`
+  - [x] rebuild `core-image-minimal` and deploy the updated images to the microSD card
+- [x] <u>**remeber to push all your commits to your remote repository**</u>
 - [ ] demonstrate to the TA
 - [ ] <u>remember to recover your microSD card before leaving</u>
 - [ ] edit `exercises/03/questions.md` to provide your answers
