@@ -69,9 +69,9 @@ The username and (very secure) password for the VM account are: `student`/`stude
   - [x] edit (**only!!!**) `evil.c`
   - [x] rebuild `core-image-minimal` and deploy the updated images to the microSD card
 - [x] <u>**remeber to push all your commits to your remote repository**</u>
-- [ ] demonstrate to the TA
-- [ ] <u>remember to recover your microSD card before leaving</u>
-- [ ] edit `exercises/03/questions.md` to provide your answers
+- [x] demonstrate to the TA
+- [x] <u>remember to recover your microSD card before leaving</u>
+- [x] edit `exercises/03/questions.md` to provide your answers
 
 
 
