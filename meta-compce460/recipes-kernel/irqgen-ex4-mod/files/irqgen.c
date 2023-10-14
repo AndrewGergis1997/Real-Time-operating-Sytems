@@ -166,7 +166,7 @@ static int32_t __init irqgen_init(void)
     }
 
     /* DONE: Register the handle to the relevant IRQ number */
-    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, SA_INTERRUPT, devname, NULL, &dummy);
+    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, &dummy);
     if (retval != 0) {
         printk(KERN_ERR KMSG_PFX "request_irq() failed with return value %d while requesting IRQ id %u.\n",
                 retval, IRQGEN_FIRST_IRQ);
@@ -197,7 +197,7 @@ static int32_t __init irqgen_init(void)
 	free_irq(IRQGEN_FIRST_IRQ, NULL);
  err_ioremap:
     // DONE: free the appropriate resource when handling this error step
-	iounmap(IRQGEN_REG_PHYS_BASE);
+	iounmap(irqgen_reg_base);
 	kfree(irqgen_data);
  err_alloc_irqgen_data:
  err_parse_parameters:
