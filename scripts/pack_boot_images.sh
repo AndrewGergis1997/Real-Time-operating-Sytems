@@ -10,6 +10,8 @@ cp -L boot.bin \
 	devicetree.dtb \
 	/media/student/PYNQ-ANDRWS
 
+cp /home/student/11/exercises/04/bitstream /media/student/PYNQ-ANDRWS
+
 umount -l /media/student/PYNQ-ANDRWS
 
 
