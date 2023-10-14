@@ -187,7 +187,7 @@ static int32_t __init irqgen_init(void)
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " ioremap_cache successful.\n");
 
     /* DONE: Register the handle to the relevant IRQ number */
-    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, &dummy);
+    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, NULL);
     if (retval != 0) {
         printk(KERN_ERR KMSG_PFX "request_irq() failed with return value %d while requesting IRQ id %u.\n",
                 retval, IRQGEN_FIRST_IRQ);
