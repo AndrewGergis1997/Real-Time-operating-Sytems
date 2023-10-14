@@ -33,6 +33,9 @@ static int dummy;
 
 const char devname[] = "irq_generator";
 
+// Spin lock Declaration
+static spinlock_t irqgen_spinlock;
+
 /* vvvv ---- LKM Parameters vvvv ---- */
 static unsigned int generate_irqs = 0;
 module_param(generate_irqs, uint, 0444);
@@ -70,16 +73,19 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
     printk(KERN_INFO KMSG_PFX "IRQ #%d received.\n", irq);
 #endif
 
-    // FIXME: increment the `count_handled` counter before ACK
+	// FIXME: increment the `count_handled` counter before ACK
+
+	spin_lock(&irqgen_spinlock);
 	irqgen_data->count_handled += 1;
-	
-    // HINT: use iowrite32 and the bitfield macroes to modify the register fields
+
+	// HINT: use iowrite32 and the bitfield macroes to modify the register fields
 	u32 rawval = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE,1)
-				   | FIELD_PREP(IRQGEN_CTRL_REG_F_HANDLED,1)
-				   | FIELD_PREP(IRQGEN_CTRL_REG_F_ACK,irq);
-	
+		       | FIELD_PREP(IRQGEN_CTRL_REG_F_HANDLED,1)
+		       | FIELD_PREP(IRQGEN_CTRL_REG_F_ACK,irq);
+
 	iowrite32(rawval, irqgen_reg_base + IRQGEN_CTRL_REG_OFFSET);
-	
+
+	spin_unlock(&irqgen_spinlock);
     return IRQ_HANDLED; // FIXME: what should be returned on completion?
 }
 
@@ -191,7 +197,7 @@ static int32_t __init irqgen_init(void)
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " ioremap_cache successful.\n");
 
     /* DONE: Register the handle to the relevant IRQ number */
-    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, &dummy);
+    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, NULL);
     if (retval != 0) {
         printk(KERN_ERR KMSG_PFX "request_irq() failed with return value %d while requesting IRQ id %u.\n",
                 retval, IRQGEN_FIRST_IRQ);
