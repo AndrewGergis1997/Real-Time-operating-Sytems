@@ -89,6 +89,7 @@ void enable_irq_generator(void)
 	
 	u32 regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 1);
 	iowrite32(regvalue, IRQGEN_CTRL_REG);
+	printk(KERN_INFO KMSG_PFX "IRQ generator enabled.\n");
 }
 
 /* Disable the IRQ Generator */
@@ -101,10 +102,14 @@ void disable_irq_generator(void)
 	
 	u32 regvalue = 0 | FIELD_PREP(IRQGEN_GENIRQ_REG_F_AMOUNT,  0);
 	iowrite32(regvalue, IRQGEN_GENIRQ_REG);
+
+	printk(KERN_INFO KMSG_PFX "IRQ amount set to 0.\n");
 	
     // DONE: use iowrite32 and the bitfield macroes to modify the register fields
 	regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE,  0);
 	iowrite32(regvalue, IRQGEN_CTRL_REG);
+
+	printk(KERN_INFO KMSG_PFX "IRQ Generator disabled.\n");
 }
 
 /* Generate specified amount of interrupts on specified IRQ_F2P line [IRQLINES_AMNT-1:0] */
@@ -131,7 +136,7 @@ u64 irqgen_read_latency(void)
 // Returns the total generated IRQ count from IRQ_GEN_IRQ_COUNT_REG
 u32 irqgen_read_count(void)
 {
-    // FIXME: use ioread32 to read the proper register
+    // DONE: use ioread32 to read the proper register
 	u32 rawval = ioread32(IRQGEN_IRQ_COUNT_REG);
 	return rawval;
 }
@@ -162,6 +167,7 @@ static int32_t __init irqgen_init(void)
         printk(KERN_ERR KMSG_PFX "fatal failure parsing parameters.\n");
         goto err_parse_parameters;
     }
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " parameters parsed.\n");
 
     irqgen_data = kzalloc(sizeof(*irqgen_data), GFP_KERNEL);
     if (NULL == irqgen_data) {
@@ -169,6 +175,7 @@ static int32_t __init irqgen_init(void)
         retval = -ENOMEM;
         goto err_alloc_irqgen_data;
     }
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " irq_gen data allocated.\n");
 
     /* DONE: Map the IRQ Generator core register with ioremap */
     irqgen_reg_base = ioremap_nocache(IRQGEN_REG_PHYS_BASE, IRQGEN_REG_PHYS_SIZE);
@@ -177,6 +184,7 @@ static int32_t __init irqgen_init(void)
         retval = -EFAULT;
         goto err_ioremap;
     }
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " ioremap_cache successful.\n");
 
     /* DONE: Register the handle to the relevant IRQ number */
     retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, &dummy);
@@ -185,12 +193,14 @@ static int32_t __init irqgen_init(void)
                 retval, IRQGEN_FIRST_IRQ);
         goto err_request_irq;
     }
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " request_irq() done.\n");
 
     retval = irqgen_sysfs_setup();
     if (0 != retval) {
         printk(KERN_ERR KMSG_PFX "Sysfs setup failed.\n");
         goto err_sysfs_setup;
     }
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " sysfs setup done.\n");
 
     /* Enable the IRQ Generator */
     enable_irq_generator();
@@ -223,14 +233,15 @@ static void __exit irqgen_exit(void)
 {
     // Read interrupt latency from the IRQ Generator on exit
     printk(KERN_INFO KMSG_PFX "IRQ count: generated since reboot %u, handled since load %u.\n",
-           irqgen_read_count(), irqgen_data->count_handled);
+	irqgen_read_count(), irqgen_data->count_handled);
     // Read interrupt latency from the IRQ Generator on exit
     printk(KERN_INFO KMSG_PFX "latency for last handled IRQ: %lluns.\n",
-           irqgen_read_latency());
+	irqgen_read_latency());
 
 
-    // FIXME: step through `init` in reverse order and disable/free/unmap allocated resources
-    irqgen_sysfs_cleanup(); // FIXME: place this line in the right order
+    // DONE: step through `init` in reverse order and disable/free/unmap allocated resources
+	disable_irq_generator();
+    irqgen_sysfs_cleanup(); 	// DONE: place this line in the right order
 	free_irq(IRQGEN_FIRST_IRQ, NULL);
 	iounmap(irqgen_reg_base);
 	kfree(irqgen_data);
