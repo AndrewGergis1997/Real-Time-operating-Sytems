@@ -23,7 +23,7 @@
 #define IRQGEN_FIRST_IRQ 45 // FIXME: find the right Linux IRQ number for the first hwirq of the device
 
 // Kernel token address to access the IRQ Generator core register
-void __iomem *irqgen_reg_base = NULL;
+void __iomem *irqgen_reg_base = IRQGEN_REG_PHYS_BASE;
 
 // Module data instance
 struct irqgen_data *irqgen_data = NULL;
@@ -74,7 +74,11 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 	irqgen_data->count_handled += 1;
 	
     // HINT: use iowrite32 and the bitfield macroes to modify the register fields
-	iowrite32(irqgen_reg_base, IRQGEN_CTRL_REG_F_HANDLED);
+	u32 rawval = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE,1)
+				   | FIELD_PREP(IRQGEN_CTRL_REG_F_HANDLED,1)
+				   | FIELD_PREP(IRQGEN_CTRL_REG_F_ACK,irq);
+	
+	iowrite32(rawval, irqgen_reg_base + IRQGEN_CTRL_REG_OFFSET);
 	
     return IRQ_HANDLED; // FIXME: what should be returned on completion?
 }
@@ -187,7 +191,7 @@ static int32_t __init irqgen_init(void)
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " ioremap_cache successful.\n");
 
     /* DONE: Register the handle to the relevant IRQ number */
-    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, NULL);
+    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, &dummy);
     if (retval != 0) {
         printk(KERN_ERR KMSG_PFX "request_irq() failed with return value %d while requesting IRQ id %u.\n",
                 retval, IRQGEN_FIRST_IRQ);
@@ -208,6 +212,7 @@ static int32_t __init irqgen_init(void)
     if (generate_irqs > 0) {
         /* Generate IRQs (amount, line, delay) */
         do_generate_irqs(generate_irqs, 0, loadtime_irq_delay);
+		printk(KERN_INFO KMSG_PFX DRIVER_LNAME " irq param received.\n");
     }
 
     return 0;
