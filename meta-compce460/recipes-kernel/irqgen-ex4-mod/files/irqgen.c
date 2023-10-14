@@ -31,6 +31,8 @@ struct irqgen_data *irqgen_data = NULL;
 // Dummy identifier for request_irq()
 static int dummy;
 
+const char devname[] = "irq_generator";
+
 /* vvvv ---- LKM Parameters vvvv ---- */
 static unsigned int generate_irqs = 0;
 module_param(generate_irqs, uint, 0444);
@@ -155,16 +157,16 @@ static int32_t __init irqgen_init(void)
         goto err_alloc_irqgen_data;
     }
 
-    /* TODO: Map the IRQ Generator core register with ioremap */
-    irqgen_reg_base = NULL;
+    /* DONE: Map the IRQ Generator core register with ioremap */
+    irqgen_reg_base = ioremap(IRQGEN_REG_PHYS_BASE, IRQGEN_REG_PHYS_SIZE);
     if (NULL == irqgen_reg_base) {
         printk(KERN_ERR KMSG_PFX "ioremap() failed.\n");
         retval = -EFAULT;
         goto err_ioremap;
     }
 
-    /* TODO: Register the handle to the relevant IRQ number */
-    retval = _request_irq(/* FIXME: fill the first arguments */, &dummy);
+    /* DONE: Register the handle to the relevant IRQ number */
+    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, SA_INTERRUPT, devname, NULL, &dummy);
     if (retval != 0) {
         printk(KERN_ERR KMSG_PFX "request_irq() failed with return value %d while requesting IRQ id %u.\n",
                 retval, IRQGEN_FIRST_IRQ);
@@ -188,11 +190,15 @@ static int32_t __init irqgen_init(void)
     return 0;
 
  err_sysfs_setup:
-    // FIXME: free the appropriate resource when handling this error step
+    // DONE: free the appropriate resource when handling this error step
+	irqgen_sysfs_cleanup();
  err_request_irq:
-    // FIXME: free the appropriate resource when handling this error step
+    // DONE: free the appropriate resource when handling this error step
+	free_irq(IRQGEN_FIRST_IRQ, NULL);
  err_ioremap:
-    // FIXME: free the appropriate resource when handling this error step
+    // DONE: free the appropriate resource when handling this error step
+	iounmap(IRQGEN_REG_PHYS_BASE);
+	kfree(irqgen_data);
  err_alloc_irqgen_data:
  err_parse_parameters:
     printk(KERN_ERR KMSG_PFX "module initialization failed\n");
