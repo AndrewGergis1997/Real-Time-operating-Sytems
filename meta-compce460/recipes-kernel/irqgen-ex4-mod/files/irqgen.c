@@ -71,10 +71,12 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 #endif
 
     // FIXME: increment the `count_handled` counter before ACK
-
+	irqgen_data->count_handled += 1;
+	
     // HINT: use iowrite32 and the bitfield macroes to modify the register fields
-
-    return IRQ_NONE; // FIXME: what should be returned on completion?
+	iowrite32(irqgen_reg_base, IRQGEN_CTRL_REG_F_HANDLED);
+	
+    return IRQ_HANDLED; // FIXME: what should be returned on completion?
 }
 
 /* Enable the IRQ Generator */
@@ -83,7 +85,10 @@ void enable_irq_generator(void)
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "Enabling IRQ Generator.\n");
 #endif
-    // HINT: use iowrite32 and the bitfield macroes to modify the register fields
+    // DONE: use iowrite32 and the bitfield macroes to modify the register fields
+	
+	u32 regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 1);
+	iowrite32(regvalue, IRQGEN_CTRL_REG);
 }
 
 /* Disable the IRQ Generator */
@@ -92,8 +97,14 @@ void disable_irq_generator(void)
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "Disabling IRQ Generator.\n");
 #endif
-    // FIXME: set to zero the `amount` field, then disable the controller
-    // HINT: use iowrite32 and the bitfield macroes to modify the register fields
+    // DONE: set to zero the `amount` field, then disable the controller
+	
+	u32 regvalue = 0 | FIELD_PREP(IRQGEN_GENIRQ_REG_F_AMOUNT,  0);
+	iowrite32(regvalue, IRQGEN_GENIRQ_REG);
+	
+    // DONE: use iowrite32 and the bitfield macroes to modify the register fields
+	regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE,  0);
+	iowrite32(regvalue, IRQGEN_CTRL_REG);
 }
 
 /* Generate specified amount of interrupts on specified IRQ_F2P line [IRQLINES_AMNT-1:0] */
@@ -121,6 +132,8 @@ u64 irqgen_read_latency(void)
 u32 irqgen_read_count(void)
 {
     // FIXME: use ioread32 to read the proper register
+	u32 rawval = ioread32(IRQGEN_IRQ_COUNT_REG);
+	return rawval;
 }
 
 // Debugging wrapper for request_irq()
@@ -218,7 +231,9 @@ static void __exit irqgen_exit(void)
 
     // FIXME: step through `init` in reverse order and disable/free/unmap allocated resources
     irqgen_sysfs_cleanup(); // FIXME: place this line in the right order
-
+	free_irq(IRQGEN_FIRST_IRQ, NULL);
+	iounmap(irqgen_reg_base);
+	kfree(irqgen_data);
     printk(KERN_INFO KMSG_PFX DRIVER_LNAME " exiting.\n");
 }
 
@@ -229,4 +244,6 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Module for the IRQ Generator IP block for the realtime systems course");
 MODULE_AUTHOR("Jan Lipponen <jan.lipponen@wapice.com>");
 MODULE_AUTHOR("Nicola Tuveri <nicola.tuveri@tut.fi>");
+MODULE_AUTHOR("Andreas Stergiopoulos <andreas.stergiopoulos@tuni.fi>");
+MODULE_AUTHOR("Andrew Gergis <andrew.gergis@tuni.fi>");
 MODULE_VERSION("0.2");

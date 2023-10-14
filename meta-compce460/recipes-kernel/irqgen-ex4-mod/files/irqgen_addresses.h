@@ -8,7 +8,7 @@
 /* IRQ Generator register address map from irq_generator_v1_1.pdf */
 # define IRQGEN_CTRL_REG_OFFSET 		0x0000 		// DONE: check in the reference documentation
 # define IRQGEN_GENIRQ_REG_OFFSET 		0x0004 		// DONE: check in the reference documentation
-# define IRQGEN_IRQ_COUNT_REG_OFFSET 	0x0008 		// DONE: check in the reference documentation
+# define IRQGEN_IRQ_COUNT_REG_OFFSET 		0x0008 		// DONE: check in the reference documentation
 # define IRQGEN_LATENCY_REG_OFFSET 		0x000C 		// DONE: check in the reference documentation
 
 # define IRQGEN_CTRL_REG      (irqgen_reg_base + IRQGEN_CTRL_REG_OFFSET)
