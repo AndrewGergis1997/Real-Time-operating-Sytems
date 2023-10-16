@@ -20,7 +20,7 @@
 #include "irqgen.h"                 // Shared module specific declarations
 
 /* Linux IRQ number for the first hwirq line */
-#define IRQGEN_FIRST_IRQ 45 // FIXME: find the right Linux IRQ number for the first hwirq of the device
+#define IRQGEN_FIRST_IRQ 45 // DONE: find the right Linux IRQ number for the first hwirq of the device
 
 // Kernel token address to access the IRQ Generator core register
 void __iomem *irqgen_reg_base = IRQGEN_REG_PHYS_BASE;
@@ -66,27 +66,27 @@ static int parse_parameters(void)
 /* ^^^^ ---- LKM Parameters ^^^^ ---- */
 
 
-/* FIXME: (1) implement the interrupt handler function */
+/* DONE: (1) implement the interrupt handler function */
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "IRQ #%d received.\n", irq);
 #endif
 
-	// FIXME: increment the `count_handled` counter before ACK
+	// DONE: increment the `count_handled` counter before ACK
 
 	spin_lock(&irqgen_spinlock);
 	irqgen_data->count_handled += 1;
-
+	// The irq intger is the linux irq number 
 	// HINT: use iowrite32 and the bitfield macroes to modify the register fields
 	u32 rawval = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE,1)
 		       | FIELD_PREP(IRQGEN_CTRL_REG_F_HANDLED,1)
-		       | FIELD_PREP(IRQGEN_CTRL_REG_F_ACK,irq);
+		       | FIELD_PREP(IRQGEN_CTRL_REG_F_ACK,0);
 
 	iowrite32(rawval, irqgen_reg_base + IRQGEN_CTRL_REG_OFFSET);
 
 	spin_unlock(&irqgen_spinlock);
-    return IRQ_HANDLED; // FIXME: what should be returned on completion?
+    return IRQ_HANDLED; // DONE: what should be returned on completion?
 }
 
 /* Enable the IRQ Generator */
@@ -197,7 +197,7 @@ static int32_t __init irqgen_init(void)
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " ioremap_cache successful.\n");
 
     /* DONE: Register the handle to the relevant IRQ number */
-    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_RISING, devname, NULL);
+    retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_HIGH, devname, NULL);
     if (retval != 0) {
         printk(KERN_ERR KMSG_PFX "request_irq() failed with return value %d while requesting IRQ id %u.\n",
                 retval, IRQGEN_FIRST_IRQ);
@@ -218,7 +218,7 @@ static int32_t __init irqgen_init(void)
     if (generate_irqs > 0) {
         /* Generate IRQs (amount, line, delay) */
         do_generate_irqs(generate_irqs, 0, loadtime_irq_delay);
-		printk(KERN_INFO KMSG_PFX DRIVER_LNAME " irq param received.\n");
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " irq param received.\n");
     }
 
     return 0;
