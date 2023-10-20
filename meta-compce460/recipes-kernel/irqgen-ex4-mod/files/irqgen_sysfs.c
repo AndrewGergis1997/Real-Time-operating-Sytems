@@ -8,7 +8,7 @@
  *          Real-Time System course (Bonus task: sysfs support).
  */
 
-//#define BONUS_SYSFS_IS_IMPLEMENTED // FIXME: enable for the bonus exercise
+#define BONUS_SYSFS_IS_IMPLEMENTED // DONE: enable for the bonus exercise
 #ifndef BONUS_SYSFS_IS_IMPLEMENTED
 
 int irqgen_sysfs_setup(void) { return 0; }
@@ -34,10 +34,11 @@ void irqgen_sysfs_cleanup(void) { return; }
 # define IRQGEN_ATTR_WO(_name) \
     static struct kobj_attribute IRQGEN_ATTR_GET_NAME(_name) = __ATTR_WO(_name)
 
+static u32 count_handled_buf =0;
 static ssize_t count_handled_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
     // DONE: write to buf (as a string) the value stored inside the module data structure
-	int32 value = sprintf(buf, "Interrupts count handled: %d\n", count_handled);
+	int32_t value = sprintf(buf, "Interrupts count handled: %d\n", count_handled_buf);
 	if (value < 0){
 		printk(KERN_ERR KMSG_PFX "sprintf failed\n");
 		return 0;
@@ -52,7 +53,7 @@ static ssize_t enabled_show(struct kobject *kobj, struct kobj_attribute *attr, c
 	// HINT: check linux/bitfield.h to see how to use the bitfield macroes
 	u32 retval = ioread32(IRQGEN_CTRL_REG);
 	u32 temp = FIELD_GET(IRQGEN_CTRL_REG_F_ENABLE, retval);
-	int32 value = sprintf(buf, "Interrupts count handled: %d\n", temp);
+	int32_t value = sprintf(buf, "Interrupts count handled: %d\n", temp);
 	if (value < 0){
 		printk(KERN_ERR KMSG_PFX "sprintf failed\n");
 		return 0;
@@ -80,7 +81,7 @@ static ssize_t delay_store(struct kobject *kobj, struct kobj_attribute *attr, co
 {
     // DONE: check boundaries, then store the value in delay_store_buf
 	// HINT: use kstrtoul()
-	u32 value = kstrtoul(buf, 0, &delay_store_buf);
+	u32 value = kstrtoul(buf, 0, (unsigned long *)&delay_store_buf);
 	if (value == 0){						/* If the buffer contains a valid integer... */
 		if (delay_store_buf <= 16383){		/* If the value is in bounds... */
 			u32 regval = 0 | FIELD_PREP(IRQGEN_GENIRQ_REG_F_DELAY, delay_store_buf);
@@ -94,6 +95,7 @@ static ssize_t delay_store(struct kobject *kobj, struct kobj_attribute *attr, co
 	}
 	return value;
 }
+IRQGEN_ATTR_WO(delay);
 
 static ssize_t amount_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
 {
@@ -113,7 +115,6 @@ static ssize_t amount_store(struct kobject *kobj, struct kobj_attribute *attr, c
 	}
 	return temp;	    
 }
-IRQGEN_ATTR_WO(delay);
 IRQGEN_ATTR_WO(amount);
 
 
@@ -124,6 +125,9 @@ IRQGEN_ATTR_WO(amount);
 static struct attribute *attrs[] = {
     // FIXME: add entries for `enabled`,`delay`,`amount`
     &IRQGEN_ATTR_GET_NAME(count_handled).attr,
+	&IRQGEN_ATTR_GET_NAME(enabled).attr,
+	&IRQGEN_ATTR_GET_NAME(delay).attr,
+	&IRQGEN_ATTR_GET_NAME(amount).attr,
     NULL,   /* need to NULL terminate the list of attributes */
 };
 
@@ -163,7 +167,8 @@ int irqgen_sysfs_setup(void)
     if (0 != retval) {
         printk(KERN_ERR KMSG_PFX "sysfs_create_group() failed.\n");
         // DONE: decrease ref count for irqgen_kobj
-	irqgen_sysfs_cleanup();
+		sysfs_remove_group(irqgen_kobj, &attr_group);
+		kobject_put(irqgen_kobj);
     }
 
     return retval;
@@ -174,7 +179,7 @@ void irqgen_sysfs_cleanup(void)
     if (irqgen_kobj)
         // DONE: decrease ref count for irqgen_kobj
 	sysfs_remove_group(irqgen_kobj, &attr_group);
-	kobject_put(DRIVER_NAME, kernel_kobj);
+	kobject_put(irqgen_kobj);
 }
 
 #endif /* !defined(BONUS_SYSFS_IS_IMPLEMENTED) */
