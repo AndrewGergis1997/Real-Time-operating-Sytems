@@ -123,7 +123,7 @@ IRQGEN_ATTR_WO(amount);
  * at once.
  */
 static struct attribute *attrs[] = {
-    // FIXME: add entries for `enabled`,`delay`,`amount`
+    // DONE: add entries for `enabled`,`delay`,`amount`
     &IRQGEN_ATTR_GET_NAME(count_handled).attr,
 	&IRQGEN_ATTR_GET_NAME(enabled).attr,
 	&IRQGEN_ATTR_GET_NAME(delay).attr,
