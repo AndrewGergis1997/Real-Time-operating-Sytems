@@ -34,11 +34,11 @@ void irqgen_sysfs_cleanup(void) { return; }
 # define IRQGEN_ATTR_WO(_name) \
     static struct kobj_attribute IRQGEN_ATTR_GET_NAME(_name) = __ATTR_WO(_name)
 
-static u32 count_handled_buf =0;
+//static u32 count_handled_buf =0;
 static ssize_t count_handled_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
     // DONE: write to buf (as a string) the value stored inside the module data structure
-	int32_t value = sprintf(buf, "Interrupts count handled: %d\n", count_handled_buf);
+	int32_t value = sprintf(buf, "Interrupts count handled: %d\n", irqgen_data->count_handled);
 	if (value < 0){
 		printk(KERN_ERR KMSG_PFX "sprintf failed\n");
 		return 0;
@@ -176,10 +176,11 @@ int irqgen_sysfs_setup(void)
 
 void irqgen_sysfs_cleanup(void)
 {
-    if (irqgen_kobj)
+    if (irqgen_kobj){
         // DONE: decrease ref count for irqgen_kobj
-	sysfs_remove_group(irqgen_kobj, &attr_group);
-	kobject_put(irqgen_kobj);
+		sysfs_remove_group(irqgen_kobj, &attr_group);
+		kobject_put(irqgen_kobj);
+	}
 }
 
 #endif /* !defined(BONUS_SYSFS_IS_IMPLEMENTED) */
