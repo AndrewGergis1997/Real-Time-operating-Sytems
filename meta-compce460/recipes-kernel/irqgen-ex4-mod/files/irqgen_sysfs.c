@@ -53,12 +53,12 @@ static ssize_t enabled_show(struct kobject *kobj, struct kobj_attribute *attr, c
 	// HINT: check linux/bitfield.h to see how to use the bitfield macroes
 	u32 retval = ioread32(IRQGEN_CTRL_REG);
 	u32 temp = FIELD_GET(IRQGEN_CTRL_REG_F_ENABLE, retval);
-	int32_t value = sprintf(buf, "Interrupts count handled: %d\n", temp);
+	int32_t value = sprintf(buf, "%d\n", temp);
 	if (value < 0){
 		printk(KERN_ERR KMSG_PFX "sprintf failed\n");
 		return 0;
 	}
-	return retval+1;
+	return value;
 }
 
 static ssize_t enabled_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
