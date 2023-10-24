@@ -20,17 +20,10 @@
 #include "irqgen.h"                 // Shared module specific declarations
 
 /* Linux IRQ number for the first hwirq line */
-<<<<<<< HEAD
 #define IRQGEN_FIRST_IRQ 45 // DONE: find the right Linux IRQ number for the first hwirq of the device
 
 // Kernel token address to access the IRQ Generator core register
 void __iomem *irqgen_reg_base = IRQGEN_REG_PHYS_BASE;
-=======
-#define IRQGEN_FIRST_IRQ 0 // FIXME: find the right Linux IRQ number for the first hwirq of the device
-
-// Kernel token address to access the IRQ Generator core register
-void __iomem *irqgen_reg_base = NULL;
->>>>>>> course_upstream_updates
 
 // Module data instance
 struct irqgen_data *irqgen_data = NULL;
@@ -38,14 +31,11 @@ struct irqgen_data *irqgen_data = NULL;
 // Dummy identifier for request_irq()
 static int dummy;
 
-<<<<<<< HEAD
 const char devname[] = "irq_generator";
 
 // Spin lock Declaration
 static spinlock_t irqgen_spinlock;
 
-=======
->>>>>>> course_upstream_updates
 /* vvvv ---- LKM Parameters vvvv ---- */
 static unsigned int generate_irqs = 0;
 module_param(generate_irqs, uint, 0444);
@@ -76,18 +66,13 @@ static int parse_parameters(void)
 /* ^^^^ ---- LKM Parameters ^^^^ ---- */
 
 
-<<<<<<< HEAD
 /* DONE: (1) implement the interrupt handler function */
-=======
-/* FIXME: (1) implement the interrupt handler function */
->>>>>>> course_upstream_updates
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "IRQ #%d received.\n", irq);
 #endif
 
-<<<<<<< HEAD
 	// DONE: increment the `count_handled` counter before ACK
 
 	spin_lock(&irqgen_spinlock);
@@ -102,13 +87,6 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 
 	spin_unlock(&irqgen_spinlock);
     return IRQ_HANDLED; // DONE: what should be returned on completion?
-=======
-    // FIXME: increment the `count_handled` counter before ACK
-
-    // HINT: use iowrite32 and the bitfield macroes to modify the register fields
-
-    return IRQ_NONE; // FIXME: what should be returned on completion?
->>>>>>> course_upstream_updates
 }
 
 /* Enable the IRQ Generator */
@@ -117,15 +95,11 @@ void enable_irq_generator(void)
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "Enabling IRQ Generator.\n");
 #endif
-<<<<<<< HEAD
     // DONE: use iowrite32 and the bitfield macroes to modify the register fields
 	
 	u32 regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 1);
 	iowrite32(regvalue, IRQGEN_CTRL_REG);
 	printk(KERN_INFO KMSG_PFX "IRQ generator enabled.\n");
-=======
-    // HINT: use iowrite32 and the bitfield macroes to modify the register fields
->>>>>>> course_upstream_updates
 }
 
 /* Disable the IRQ Generator */
@@ -134,7 +108,6 @@ void disable_irq_generator(void)
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "Disabling IRQ Generator.\n");
 #endif
-<<<<<<< HEAD
     // DONE: set to zero the `amount` field, then disable the controller
 	
 	u32 regvalue = 0 | FIELD_PREP(IRQGEN_GENIRQ_REG_F_AMOUNT,  0);
@@ -147,10 +120,6 @@ void disable_irq_generator(void)
 	iowrite32(regvalue, IRQGEN_CTRL_REG);
 
 	printk(KERN_INFO KMSG_PFX "IRQ Generator disabled.\n");
-=======
-    // FIXME: set to zero the `amount` field, then disable the controller
-    // HINT: use iowrite32 and the bitfield macroes to modify the register fields
->>>>>>> course_upstream_updates
 }
 
 /* Generate specified amount of interrupts on specified IRQ_F2P line [IRQLINES_AMNT-1:0] */
@@ -177,13 +146,9 @@ u64 irqgen_read_latency(void)
 // Returns the total generated IRQ count from IRQ_GEN_IRQ_COUNT_REG
 u32 irqgen_read_count(void)
 {
-<<<<<<< HEAD
     // DONE: use ioread32 to read the proper register
 	u32 rawval = ioread32(IRQGEN_IRQ_COUNT_REG);
 	return rawval;
-=======
-    // FIXME: use ioread32 to read the proper register
->>>>>>> course_upstream_updates
 }
 
 // Debugging wrapper for request_irq()
@@ -212,10 +177,7 @@ static int32_t __init irqgen_init(void)
         printk(KERN_ERR KMSG_PFX "fatal failure parsing parameters.\n");
         goto err_parse_parameters;
     }
-<<<<<<< HEAD
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " parameters parsed.\n");
-=======
->>>>>>> course_upstream_updates
 
     irqgen_data = kzalloc(sizeof(*irqgen_data), GFP_KERNEL);
     if (NULL == irqgen_data) {
@@ -223,50 +185,32 @@ static int32_t __init irqgen_init(void)
         retval = -ENOMEM;
         goto err_alloc_irqgen_data;
     }
-<<<<<<< HEAD
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " irq_gen data allocated.\n");
 
     /* DONE: Map the IRQ Generator core register with ioremap */
     irqgen_reg_base = ioremap_nocache(IRQGEN_REG_PHYS_BASE, IRQGEN_REG_PHYS_SIZE);
-=======
-
-    /* TODO: Map the IRQ Generator core register with ioremap */
-    irqgen_reg_base = NULL;
->>>>>>> course_upstream_updates
     if (NULL == irqgen_reg_base) {
         printk(KERN_ERR KMSG_PFX "ioremap() failed.\n");
         retval = -EFAULT;
         goto err_ioremap;
     }
-<<<<<<< HEAD
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " ioremap_cache successful.\n");
 
     /* DONE: Register the handle to the relevant IRQ number */
     retval = _request_irq(IRQGEN_FIRST_IRQ, (irq_handler_t) irqgen_irqhandler, IRQF_TRIGGER_HIGH, devname, NULL);
-=======
-
-    /* TODO: Register the handle to the relevant IRQ number */
-    retval = _request_irq(/* FIXME: fill the first arguments */, &dummy);
->>>>>>> course_upstream_updates
     if (retval != 0) {
         printk(KERN_ERR KMSG_PFX "request_irq() failed with return value %d while requesting IRQ id %u.\n",
                 retval, IRQGEN_FIRST_IRQ);
         goto err_request_irq;
     }
-<<<<<<< HEAD
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " request_irq() done.\n");
-=======
->>>>>>> course_upstream_updates
 
     retval = irqgen_sysfs_setup();
     if (0 != retval) {
         printk(KERN_ERR KMSG_PFX "Sysfs setup failed.\n");
         goto err_sysfs_setup;
     }
-<<<<<<< HEAD
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " sysfs setup done.\n");
-=======
->>>>>>> course_upstream_updates
 
     /* Enable the IRQ Generator */
     enable_irq_generator();
@@ -274,16 +218,12 @@ static int32_t __init irqgen_init(void)
     if (generate_irqs > 0) {
         /* Generate IRQs (amount, line, delay) */
         do_generate_irqs(generate_irqs, 0, loadtime_irq_delay);
-<<<<<<< HEAD
 	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " irq param received.\n");
-=======
->>>>>>> course_upstream_updates
     }
 
     return 0;
 
  err_sysfs_setup:
-<<<<<<< HEAD
     // DONE: free the appropriate resource when handling this error step
 	irqgen_sysfs_cleanup();
  err_request_irq:
@@ -293,13 +233,6 @@ static int32_t __init irqgen_init(void)
     // DONE: free the appropriate resource when handling this error step
 	iounmap(irqgen_reg_base);
 	kfree(irqgen_data);
-=======
-    // FIXME: free the appropriate resource when handling this error step
- err_request_irq:
-    // FIXME: free the appropriate resource when handling this error step
- err_ioremap:
-    // FIXME: free the appropriate resource when handling this error step
->>>>>>> course_upstream_updates
  err_alloc_irqgen_data:
  err_parse_parameters:
     printk(KERN_ERR KMSG_PFX "module initialization failed\n");
@@ -311,7 +244,6 @@ static void __exit irqgen_exit(void)
 {
     // Read interrupt latency from the IRQ Generator on exit
     printk(KERN_INFO KMSG_PFX "IRQ count: generated since reboot %u, handled since load %u.\n",
-<<<<<<< HEAD
 	irqgen_read_count(), irqgen_data->count_handled);
     // Read interrupt latency from the IRQ Generator on exit
     printk(KERN_INFO KMSG_PFX "latency for last handled IRQ: %lluns.\n",
@@ -324,17 +256,6 @@ static void __exit irqgen_exit(void)
 	free_irq(IRQGEN_FIRST_IRQ, NULL);
 	iounmap(irqgen_reg_base);
 	kfree(irqgen_data);
-=======
-           irqgen_read_count(), irqgen_data->count_handled);
-    // Read interrupt latency from the IRQ Generator on exit
-    printk(KERN_INFO KMSG_PFX "latency for last handled IRQ: %lluns.\n",
-           irqgen_read_latency());
-
-
-    // FIXME: step through `init` in reverse order and disable/free/unmap allocated resources
-    irqgen_sysfs_cleanup(); // FIXME: place this line in the right order
-
->>>>>>> course_upstream_updates
     printk(KERN_INFO KMSG_PFX DRIVER_LNAME " exiting.\n");
 }
 
@@ -345,9 +266,6 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Module for the IRQ Generator IP block for the realtime systems course");
 MODULE_AUTHOR("Jan Lipponen <jan.lipponen@wapice.com>");
 MODULE_AUTHOR("Nicola Tuveri <nicola.tuveri@tut.fi>");
-<<<<<<< HEAD
 MODULE_AUTHOR("Andreas Stergiopoulos <andreas.stergiopoulos@tuni.fi>");
 MODULE_AUTHOR("Andrew Gergis <andrew.gergis@tuni.fi>");
-=======
->>>>>>> course_upstream_updates
 MODULE_VERSION("0.2");

@@ -8,11 +8,7 @@
  *          Real-Time System course (Bonus task: sysfs support).
  */
 
-<<<<<<< HEAD
 #define BONUS_SYSFS_IS_IMPLEMENTED // DONE: enable for the bonus exercise
-=======
-//#define BONUS_SYSFS_IS_IMPLEMENTED // FIXME: enable for the bonus exercise
->>>>>>> course_upstream_updates
 #ifndef BONUS_SYSFS_IS_IMPLEMENTED
 
 int irqgen_sysfs_setup(void) { return 0; }
@@ -38,7 +34,6 @@ void irqgen_sysfs_cleanup(void) { return; }
 # define IRQGEN_ATTR_WO(_name) \
     static struct kobj_attribute IRQGEN_ATTR_GET_NAME(_name) = __ATTR_WO(_name)
 
-<<<<<<< HEAD
 //static u32 count_handled_buf =0;
 static ssize_t count_handled_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
@@ -49,17 +44,11 @@ static ssize_t count_handled_show(struct kobject *kobj, struct kobj_attribute *a
 		return 0;
 	}
 	return value+1;
-=======
-static ssize_t count_handled_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
-{
-    // FIXME: write to buf (as a string) the value stored inside the module data structure
->>>>>>> course_upstream_updates
 }
 IRQGEN_ATTR_RO(count_handled);
 
 static ssize_t enabled_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
-<<<<<<< HEAD
     // DONE: read this value from the field in the CTRL register, print 1 or 0 a string to buf
 	// HINT: check linux/bitfield.h to see how to use the bitfield macroes
 	u32 retval = ioread32(IRQGEN_CTRL_REG);
@@ -72,11 +61,6 @@ static ssize_t enabled_show(struct kobject *kobj, struct kobj_attribute *attr, c
 	return retval+1;
 }
 
-=======
-    // FIXME: read this value from the field in the CTRL register, print 1 or 0 a string to buf
-    // HINT: check linux/bitfield.h to see how to use the bitfield macroes
-}
->>>>>>> course_upstream_updates
 static ssize_t enabled_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
 {
     bool var;
@@ -95,7 +79,6 @@ IRQGEN_ATTR_RW(enabled);
 static u32 delay_store_buf = 0;
 static ssize_t delay_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
 {
-<<<<<<< HEAD
     // DONE: check boundaries, then store the value in delay_store_buf
 	// HINT: use kstrtoul()
 	u32 value = kstrtoul(buf, 0, (unsigned long *)&delay_store_buf);
@@ -132,21 +115,6 @@ static ssize_t amount_store(struct kobject *kobj, struct kobj_attribute *attr, c
 	}
 	return temp;	    
 }
-=======
-    // FIXME: check boundaries, then store the value in delay_store_buf
-    // HINT: use kstrtoul()
-}
-static ssize_t amount_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
-{
-    unsigned long val;
-    // FIXME: save in val, then check boundaries
-    // HINT: use kstrtoul()
-
-    do_generate_irqs(val, 0, delay_store_buf);
-    return count;
-}
-IRQGEN_ATTR_WO(delay);
->>>>>>> course_upstream_updates
 IRQGEN_ATTR_WO(amount);
 
 
@@ -155,16 +123,11 @@ IRQGEN_ATTR_WO(amount);
  * at once.
  */
 static struct attribute *attrs[] = {
-<<<<<<< HEAD
     // DONE: add entries for `enabled`,`delay`,`amount`
     &IRQGEN_ATTR_GET_NAME(count_handled).attr,
 	&IRQGEN_ATTR_GET_NAME(enabled).attr,
 	&IRQGEN_ATTR_GET_NAME(delay).attr,
 	&IRQGEN_ATTR_GET_NAME(amount).attr,
-=======
-    // FIXME: add entries for `enabled`,`delay`,`amount`
-    &IRQGEN_ATTR_GET_NAME(count_handled).attr,
->>>>>>> course_upstream_updates
     NULL,   /* need to NULL terminate the list of attributes */
 };
 
@@ -203,13 +166,9 @@ int irqgen_sysfs_setup(void)
     retval = sysfs_create_group(irqgen_kobj, &attr_group);
     if (0 != retval) {
         printk(KERN_ERR KMSG_PFX "sysfs_create_group() failed.\n");
-<<<<<<< HEAD
         // DONE: decrease ref count for irqgen_kobj
 		sysfs_remove_group(irqgen_kobj, &attr_group);
 		kobject_put(irqgen_kobj);
-=======
-        // FIXME: decrease ref count for irqgen_kobj
->>>>>>> course_upstream_updates
     }
 
     return retval;
@@ -217,16 +176,11 @@ int irqgen_sysfs_setup(void)
 
 void irqgen_sysfs_cleanup(void)
 {
-<<<<<<< HEAD
     if (irqgen_kobj){
         // DONE: decrease ref count for irqgen_kobj
 		sysfs_remove_group(irqgen_kobj, &attr_group);
 		kobject_put(irqgen_kobj);
 	}
-=======
-    if (irqgen_kobj)
-        // FIXME: decrease ref count for irqgen_kobj
->>>>>>> course_upstream_updates
 }
 
 #endif /* !defined(BONUS_SYSFS_IS_IMPLEMENTED) */
