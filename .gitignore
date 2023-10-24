@@ -23,4 +23,4 @@
 /build/tmp/work-shared
 *.testdata.json
 /poky_cache/
-
+*log
