@@ -22,13 +22,13 @@
 #include "irqgen.h"                 // Shared module specific declarations
 #include <linux/errno.h>			/* ERRNO provider header file */
 
-#define PROP_COMPATIBLE "compatible" // DONE: compatible property for the irqgen device from the devicetree
+#define PROP_COMPATIBLE "wapice,irq-gen" // DONE: compatible property for the irqgen device from the devicetree
 #define PROP_WAPICE_INTRACK "wapice,intrack" // DONE: custom intrack property from the devicetree
 
 #define FPGA_CLOCK_NS   10 /* 1000 / FPGA_CLOCK_MHZ */ // DONE: how many nanoseconds is a FPGA1 clock cycle?
 
 // Kernel token address to access the IRQ Generator core register
-void __iomem *irqgen_reg_base = IRQGEN_REG_PHYS_BASE;
+void __iomem *irqgen_reg_base = NULL;
 
 // Module data instance
 struct irqgen_data *irqgen_data = NULL;
@@ -106,6 +106,7 @@ void enable_irq_generator(void)
     printk(KERN_INFO KMSG_PFX "Enabling IRQ Generator.\n");
 #endif
     // DONE: use iowrite32 and the bitfield macroes to modify the register fields
+	printk(KERN_INFO KMSG_PFX "Enabling IRQ Generator.\n");
 	
 	u32 regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 1);
 	iowrite32(regvalue, IRQGEN_CTRL_REG);
@@ -186,12 +187,17 @@ int _devm_request_irq(struct device *_dev, unsigned int _irq, irq_handler_t _han
         } \
     } while(0)
 
+
+
+
 static int irqgen_probe(struct platform_device *pdev)
 {
     int retval = 0;
     int irqs_count = 0, irqs_acks = 0;
     int i;
     struct resource *iomem_range = NULL;
+	
+	printk(KERN_ERR KMSG_PFX "Entering probe.\n");
 
     // DONE: use DEVM_KZALLOC_HELPER to dinamically allocate irqgen_data (the pointers inside the structure will need separate allocations)
 	DEVM_KZALLOC_HELPER(irqgen_data, pdev, 1, GFP_KERNEL);
@@ -212,8 +218,8 @@ static int irqgen_probe(struct platform_device *pdev)
 	}
 
     // DONE: devm_ioremap_resource() (and error checking)
-	irqgen_base = devm_ioremap_resource(&pdev->dev, iomem_range);
-	if(irqgen_base == NULL)
+	irqgen_reg_base = devm_ioremap_resource(&pdev->dev, iomem_range);
+	if(irqgen_reg_base == NULL)
 	{
 		printk(KERN_ERR KMSG_PFX "Could not perform ioremap for the device.\n");
 		retval = -ENOMEM;
@@ -253,7 +259,8 @@ static int irqgen_probe(struct platform_device *pdev)
                         pdev, irqs_count, GFP_KERNEL);
 
     irqgen_data->line_count = irqs_count;
-    retval = of_property_read_u32_array(pdev->dev.of_node, PROP_WAPICE_INTRACK, intr_acks, qty /* DONE */);
+	size_t qty = 16;
+    retval = of_property_read_u32_array(pdev->dev.of_node, PROP_WAPICE_INTRACK, irqgen_data->intr_acks, qty /* DONE */);
     if (retval) {
         printk(KERN_ERR KMSG_PFX
                "Failed to read interrupt ack values from the device tree with %d.\n",
@@ -283,12 +290,12 @@ static int irqgen_probe(struct platform_device *pdev)
 
         /* Register the handle to the relevant IRQ number and the corresponding idx value */
         retval = _devm_request_irq(
-			pdev,
+			&pdev->dev,
 			irq_id,
 			irqgen_irqhandler,
 			0,			/* NOT SURE ABOUT THAT */
 			DRIVER_NAME,
-			irqgen_base /* DONE */
+			irqgen_reg_base /* DONE */
 		);
         if (retval != 0) {
             printk(KERN_ERR KMSG_PFX
@@ -315,12 +322,30 @@ static int irqgen_probe(struct platform_device *pdev)
     return retval;
 }
 
+
+
 static int irqgen_remove(struct platform_device *pdev)
 {
     irqgen_sysfs_cleanup(pdev); // DONE: enable
-	free_irq(IRQGEN_FIRST_IRQ, NULL);
+	//free_irq(IRQGEN_FIRST_IRQ, NULL);
     return 0;
 }
+
+// DONE: glue together the platform driver and the device-tree (use PROP_COMPATIBLE)
+static const struct of_device_id irqgen_of_ids[] = {
+	{ .compatible = PROP_COMPATIBLE,},
+	{/* end of list */}
+};
+
+static struct platform_driver irqgen_driver = {
+	.driver = {
+		.name = "irq_gen",
+		.owner = THIS_MODULE,
+		.of_match_table = irqgen_of_ids,
+	},
+	.probe = irqgen_probe,
+	.remove = irqgen_remove,
+};
 
 // The kernel module init function
 static int32_t __init irqgen_init(void)
@@ -334,17 +359,31 @@ static int32_t __init irqgen_init(void)
         printk(KERN_ERR KMSG_PFX "fatal failure parsing parameters.\n");
         goto err_parse_parameters;
     }
+	
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " parameters parsed.\n");
 
     // DONE: something is missing here
-	platform_driver_probe(irqgen_probe, pdev);
+	//platform_driver_register(&irqgen_driver);
+	retval = platform_driver_probe(&irqgen_driver, irqgen_probe);
+	if(retval != 0) 
+	{
+		printk(KERN_INFO KMSG_PFX DRIVER_LNAME " platform_driver_probe failed with code %d.\n", retval);
+		goto err_platform_driver_probe;
+	}
+	
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " platform_driver_probe passed.\n");
 
     /* Enable the IRQ Generator */
     enable_irq_generator();
+	
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " enable_irq_generator passed.\n");
 
     if (generate_irqs > 0) {
         /* Generate IRQs (amount, line, delay) */
         do_generate_irqs(generate_irqs, 0, loadtime_irq_delay);
     }
+	
+	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " initialization done.\n");
 
     return 0;
 
@@ -368,28 +407,14 @@ static void __exit irqgen_exit(void)
     disable_irq_generator();
 
     /* DONE: Unregister the platform driver and associated resources */
-	platform_driver_unregister(irqgen_probe, pdev);
+	platform_driver_unregister(&irqgen_driver);
     printk(KERN_INFO KMSG_PFX DRIVER_LNAME " exiting.\n");
 }
 
 
 
 
-// DONE: glue together the platform driver and the device-tree (use PROP_COMPATIBLE)
-static const struct of_device_id irqgen_of_ids[] = {
-	{ .compatible = PROP_COMPATIBLE,},
-	{/* end of list */}
-};
 
-static struct platform_driver irqgen_driver = {
-	.driver = {
-		.name = DRIVER_NAME,
-		.owner = THIS_MODULE,
-		.of_match_table = irqgen_of_ids,
-	},
-	.probe = irqgen_probe,
-	.remove = irqgen_remove,
-};
 
 
 
