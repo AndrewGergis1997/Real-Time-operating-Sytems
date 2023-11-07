@@ -75,6 +75,7 @@ static inline u32 irqgen_read_latency_clk(void)
 
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
+	printk(KERN_INFO KMSG_PFX "Entering IRQ handler.\n");
     u32 idx = *(const u32 *)data;
     u32 ack = irqgen_data->intr_acks[idx];
     u32 regvalue = ioread32(IRQGEN_CTRL_REG);
@@ -225,6 +226,7 @@ static int irqgen_probe(struct platform_device *pdev)
 		retval = -ENOMEM;
 		goto err;
 	}
+	printk(KERN_INFO KMSG_PFX "irqgen_reg_base: %x.\n", irqgen_reg_base);
 
 #if 1 // DONE: enable
     irqs_count = platform_irq_count(pdev);
