@@ -24,10 +24,10 @@
 #define PROP_COMPATIBLE "" // FIXME: compatible property for the irqgen device from the devicetree
 #define PROP_WAPICE_INTRACK "" // FIXME: custom intrack property from the devicetree
 
-#define FPGA_CLOCK_NS   0 /* 1000 / FPGA_CLOCK_MHZ */ // FIXME: how many nanoseconds is a FPGA clock cycle?
+#define FPGA_CLOCK_NS   10 /* 1000 / FPGA_CLOCK_MHZ */ // FIXME: how many nanoseconds is a FPGA1 clock cycle?
 
 // Kernel token address to access the IRQ Generator core register
-void __iomem *irqgen_reg_base = NULL;
+void __iomem *irqgen_reg_base = IRQGEN_REG_PHYS_BASE;
 
 // Module data instance
 struct irqgen_data *irqgen_data = NULL;
@@ -66,7 +66,9 @@ static int parse_parameters(void)
 // Returns the latency of last successfully served IRQ, in clock cycles
 static inline u32 irqgen_read_latency_clk(void)
 {
-    // FIXME: copy implementation from your EX04 solution
+    // DONE: copy implementation from your EX04 solution
+	u32 cycles = ioread32(IRQGEN_LATENCY_REG);
+	u64 latency = 10 * cycles;
     return 0;
 }
 
@@ -98,13 +100,36 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 /* Enable the IRQ Generator */
 void enable_irq_generator(void)
 {
-    // FIXME: copy implementation from your EX04 solution
+    // DONE: copy implementation from your EX04 solution
+#ifdef DEBUG
+    printk(KERN_INFO KMSG_PFX "Enabling IRQ Generator.\n");
+#endif
+    // DONE: use iowrite32 and the bitfield macroes to modify the register fields
+	
+	u32 regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 1);
+	iowrite32(regvalue, IRQGEN_CTRL_REG);
+	printk(KERN_INFO KMSG_PFX "IRQ generator enabled.\n");
 }
 
 /* Disable the IRQ Generator */
 void disable_irq_generator(void)
 {
-    // FIXME: copy implementation from your EX04 solution
+    // DONE: copy implementation from your EX04 solution
+#ifdef DEBUG
+    printk(KERN_INFO KMSG_PFX "Disabling IRQ Generator.\n");
+#endif
+    // DONE: set to zero the `amount` field, then disable the controller
+	
+	u32 regvalue = 0 | FIELD_PREP(IRQGEN_GENIRQ_REG_F_AMOUNT,  0);
+	iowrite32(regvalue, IRQGEN_GENIRQ_REG);
+
+	printk(KERN_INFO KMSG_PFX "IRQ amount set to 0.\n");
+	
+    // DONE: use iowrite32 and the bitfield macroes to modify the register fields
+	regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE,  0);
+	iowrite32(regvalue, IRQGEN_CTRL_REG);
+
+	printk(KERN_INFO KMSG_PFX "IRQ Generator disabled.\n");
 }
 
 /* Generate specified amount of interrupts on specified IRQ_F2P line [IRQLINES_AMNT-1:0] */
