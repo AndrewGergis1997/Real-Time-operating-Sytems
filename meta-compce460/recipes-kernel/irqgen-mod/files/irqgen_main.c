@@ -200,8 +200,7 @@ static int irqgen_probe(struct platform_device *pdev)
 		printk(KERN_ERR KMSG_PFX "Could not allocate space for irqgen_data.\n");
 		retval = -ENOMEM;
 		goto err;
-	}
-	// TODO: Need to finish allocations for members of irqgen_data
+	}	
 
     // DONE: platform_get_resource() (and error checking)
 	iomem_range = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -221,7 +220,7 @@ static int irqgen_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-#if 0 // TODO: enable
+#if 1 // DONE: enable
     irqs_count = platform_irq_count(pdev);
     irqs_acks = of_property_count_u32_elems(pdev->dev.of_node, PROP_WAPICE_INTRACK);
 
@@ -254,7 +253,7 @@ static int irqgen_probe(struct platform_device *pdev)
                         pdev, irqs_count, GFP_KERNEL);
 
     irqgen_data->line_count = irqs_count;
-    retval = of_property_read_u32_array(/* FIXME */);
+    retval = of_property_read_u32_array(pdev->dev.of_node, PROP_WAPICE_INTRACK, intr_acks, qty /* DONE */);
     if (retval) {
         printk(KERN_ERR KMSG_PFX
                "Failed to read interrupt ack values from the device tree with %d.\n",
@@ -283,7 +282,14 @@ static int irqgen_probe(struct platform_device *pdev)
         irqgen_data->intr_idx[i] = i;
 
         /* Register the handle to the relevant IRQ number and the corresponding idx value */
-        retval = _devm_request_irq(/* FIXME */);
+        retval = _devm_request_irq(
+			pdev,
+			irq_id,
+			irqgen_irqhandler,
+			0,			/* NOT SURE ABOUT THAT */
+			DRIVER_NAME,
+			irqgen_base /* DONE */
+		);
         if (retval != 0) {
             printk(KERN_ERR KMSG_PFX
                    "devm_request_irq() failed with return value %d "
@@ -369,8 +375,7 @@ static void __exit irqgen_exit(void)
 
 
 
-
-// FIXME: glue together the platform driver and the device-tree (use PROP_COMPATIBLE)
+// DONE: glue together the platform driver and the device-tree (use PROP_COMPATIBLE)
 static const struct of_device_id irqgen_of_ids[] = {
 	{ .compatible = PROP_COMPATIBLE,},
 	{/* end of list */}
