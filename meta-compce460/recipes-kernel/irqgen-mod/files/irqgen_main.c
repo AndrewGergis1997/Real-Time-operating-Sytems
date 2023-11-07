@@ -20,11 +20,12 @@
 
 
 #include "irqgen.h"                 // Shared module specific declarations
+#include <linux/errno.h>			/* ERRNO provider header file */
 
-#define PROP_COMPATIBLE "" // FIXME: compatible property for the irqgen device from the devicetree
-#define PROP_WAPICE_INTRACK "" // FIXME: custom intrack property from the devicetree
+#define PROP_COMPATIBLE "compatible" // DONE: compatible property for the irqgen device from the devicetree
+#define PROP_WAPICE_INTRACK "wapice,intrack" // DONE: custom intrack property from the devicetree
 
-#define FPGA_CLOCK_NS   10 /* 1000 / FPGA_CLOCK_MHZ */ // FIXME: how many nanoseconds is a FPGA1 clock cycle?
+#define FPGA_CLOCK_NS   10 /* 1000 / FPGA_CLOCK_MHZ */ // DONE: how many nanoseconds is a FPGA1 clock cycle?
 
 // Kernel token address to access the IRQ Generator core register
 void __iomem *irqgen_reg_base = IRQGEN_REG_PHYS_BASE;
@@ -192,13 +193,35 @@ static int irqgen_probe(struct platform_device *pdev)
     int i;
     struct resource *iomem_range = NULL;
 
-    // FIXME: use DEVM_KZALLOC_HELPER to dinamically allocate irqgen_data (the pointers inside the structure will need separate allocations)
+    // DONE: use DEVM_KZALLOC_HELPER to dinamically allocate irqgen_data (the pointers inside the structure will need separate allocations)
+	DEVM_KZALLOC_HELPER(irqgen_data, pdev, 1, GFP_KERNEL);
+	if(irqgen_data == NULL)
+	{
+		printk(KERN_ERR KMSG_PFX "Could not allocate space for irqgen_data.\n");
+		retval = -ENOMEM;
+		goto err;
+	}
+	// TODO: Need to finish allocations for members of irqgen_data
 
-    // FIXME: platform_get_resource() (and error checking)
+    // DONE: platform_get_resource() (and error checking)
+	iomem_range = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if(iomem_range == NULL)
+	{
+		printk(KERN_ERR KMSG_PFX "Could not fetch the space of the irq_gen device.\n");
+		retval = -ENOMEM;
+		goto err;
+	}
 
-    // FIXME: devm_ioremap_resource() (and error checking)
+    // DONE: devm_ioremap_resource() (and error checking)
+	irqgen_base = devm_ioremap_resource(&pdev->dev, iomem_range);
+	if(irqgen_base == NULL)
+	{
+		printk(KERN_ERR KMSG_PFX "Could not perform ioremap for the device.\n");
+		retval = -ENOMEM;
+		goto err;
+	}
 
-#if 0 // FIXME: enable
+#if 0 // TODO: enable
     irqs_count = platform_irq_count(pdev);
     irqs_acks = of_property_count_u32_elems(pdev->dev.of_node, PROP_WAPICE_INTRACK);
 
@@ -347,6 +370,21 @@ static void __exit irqgen_exit(void)
 
 
 // FIXME: glue together the platform driver and the device-tree (use PROP_COMPATIBLE)
+static const struct of_device_id irqgen_of_ids[] = {
+	{ .compatible = PROP_COMPATIBLE,},
+	{/* end of list */}
+};
+
+static struct platform_driver irqgen_driver = {
+	.driver = {
+		.name = DRIVER_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = irqgen_of_ids,
+	},
+	.probe = irqgen_probe,
+	.remove = irqgen_remove,
+};
+
 
 
 module_init(irqgen_init);
@@ -354,7 +392,9 @@ module_exit(irqgen_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Module for the IRQ Generator IP block for the realtime systems course");
-// FIXME: add yourself among the authors
+// DONE: add yourself among the authors
+MODULE_AUTHOR("Andreas Stergiopoulos <andreas.stergiopoulos@tuni.fi>");
+MODULE_AUTHOR("Andrew Gergis <andrew.gergis@tuni.fi>");
 MODULE_AUTHOR("Jan Lipponen <jan.lipponen@wapice.com>");
 MODULE_AUTHOR("Nicola Tuveri <nicola.tuveri@tut.fi>");
 MODULE_VERSION("0.6");
