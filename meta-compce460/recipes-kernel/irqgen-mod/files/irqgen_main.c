@@ -311,8 +311,8 @@ static int irqgen_probe(struct platform_device *pdev)
 
 static int irqgen_remove(struct platform_device *pdev)
 {
-    //irqgen_sysfs_cleanup(pdev); // FIXME: enable
-
+    irqgen_sysfs_cleanup(pdev); // DONE: enable
+	free_irq(IRQGEN_FIRST_IRQ, NULL);
     return 0;
 }
 
@@ -329,7 +329,8 @@ static int32_t __init irqgen_init(void)
         goto err_parse_parameters;
     }
 
-    // FIXME: something is missing here
+    // DONE: something is missing here
+	platform_driver_probe(irqgen_probe, pdev);
 
     /* Enable the IRQ Generator */
     enable_irq_generator();
@@ -360,8 +361,8 @@ static void __exit irqgen_exit(void)
     /* Disable the IRQ Generator */
     disable_irq_generator();
 
-    /* FIXME: Unregister the platform driver and associated resources */
-
+    /* DONE: Unregister the platform driver and associated resources */
+	platform_driver_unregister(irqgen_probe, pdev);
     printk(KERN_INFO KMSG_PFX DRIVER_LNAME " exiting.\n");
 }
 
