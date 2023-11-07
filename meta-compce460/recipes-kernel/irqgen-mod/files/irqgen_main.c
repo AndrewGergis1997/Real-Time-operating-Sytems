@@ -73,9 +73,13 @@ static inline u32 irqgen_read_latency_clk(void)
     return 0;
 }
 
+// Spin lock Declaration
+static spinlock_t irqgen_spinlock;
+
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
 	printk(KERN_INFO KMSG_PFX "Entering IRQ handler.\n");
+	spin_lock(&irqgen_spinlock);
     u32 idx = *(const u32 *)data;
     u32 ack = irqgen_data->intr_acks[idx];
     u32 regvalue = ioread32(IRQGEN_CTRL_REG);
@@ -95,7 +99,7 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 
     if (irqgen_data->l_cnt < MAX_LATENCIES)
         irqgen_data->latencies[irqgen_data->l_cnt++] = irqgen_read_latency_clk();
-
+	spin_unlock(&irqgen_spinlock);
     return IRQ_HANDLED;
 }
 
@@ -294,8 +298,8 @@ static int irqgen_probe(struct platform_device *pdev)
         retval = _devm_request_irq(
 			&pdev->dev,
 			irq_id,
-			irqgen_irqhandler,
-			0,			/* NOT SURE ABOUT THAT */
+			(irq_handler_t) irqgen_irqhandler,
+			IRQF_TRIGGER_HIGH,			/* NOT SURE ABOUT THAT */
 			DRIVER_NAME,
 			irqgen_reg_base /* DONE */
 		);
