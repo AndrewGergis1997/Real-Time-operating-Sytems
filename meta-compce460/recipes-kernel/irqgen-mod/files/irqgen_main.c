@@ -68,9 +68,11 @@ static int parse_parameters(void)
 static inline u32 irqgen_read_latency_clk(void)
 {
     // DONE: copy implementation from your EX04 solution
+	printk(KERN_INFO KMSG_PFX "IRQ handler reading IRQ latency\n");
 	u32 cycles = ioread32(IRQGEN_LATENCY_REG);
 	u64 latency = 10 * cycles;
-    return 0;
+	printk(KERN_INFO KMSG_PFX "IRQ handler IRQ latency read\n");
+    return latency;
 }
 
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
@@ -78,23 +80,30 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 	printk(KERN_INFO KMSG_PFX "Entering IRQ handler.\n");
     u32 idx = *(const u32 *)data;
     u32 ack = irqgen_data->intr_acks[idx];
+	printk(KERN_INFO KMSG_PFX "IRQ handler idx: %d.\n", ack);
+	
     u32 regvalue = ioread32(IRQGEN_CTRL_REG);
     regvalue &= ~(IRQGEN_CTRL_REG_F_HANDLED | IRQGEN_CTRL_REG_F_ACK);
     regvalue |= 0
                 | FIELD_PREP(IRQGEN_CTRL_REG_F_HANDLED, 1)
                 | FIELD_PREP(IRQGEN_CTRL_REG_F_ACK, (ack));
 
+	
     ++irqgen_data->total_handled;
     ++irqgen_data->intr_handled[idx];
+	printk(KERN_INFO KMSG_PFX "IRQ handler ioread done\n");
 
 # ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "IRQ #%d (idx: %d) received (ACK 0x%0X).\n", irq, idx, ack);
 # endif
 
     iowrite32(regvalue, IRQGEN_CTRL_REG);
+	printk(KERN_INFO KMSG_PFX "IRQ handler iowrite done\n");
 
     if (irqgen_data->l_cnt < MAX_LATENCIES)
         irqgen_data->latencies[irqgen_data->l_cnt++] = irqgen_read_latency_clk();
+	
+	
 
     return IRQ_HANDLED;
 }
@@ -259,6 +268,10 @@ static int irqgen_probe(struct platform_device *pdev)
                         pdev, irqs_count, GFP_KERNEL);
     DEVM_KZALLOC_HELPER(irqgen_data->intr_handled,
                         pdev, irqs_count, GFP_KERNEL);
+	DEVM_KZALLOC_HELPER(irqgen_data->latencies,
+                        pdev, MAX_LATENCIES, GFP_KERNEL);
+	irqgen_data->l_cnt = 0;
+	
 
     irqgen_data->line_count = irqs_count;
 	size_t qty = 16;
@@ -295,7 +308,7 @@ static int irqgen_probe(struct platform_device *pdev)
 			&pdev->dev,
 			irq_id,
 			irqgen_irqhandler,
-			0,			/* NOT SURE ABOUT THAT */
+			IRQF_TRIGGER_HIGH,			/* NOT SURE ABOUT THAT */
 			DRIVER_NAME,
 			irqgen_reg_base /* DONE */
 		);
@@ -319,6 +332,8 @@ static int irqgen_probe(struct platform_device *pdev)
 
  /* HINT: We are using devm_ resources: do we need to free them? */
  err_sysfs_setup:
+	//devm_iounmap(pdev->dev, irqgen_reg_base);
+	irqgen_sysfs_cleanup(pdev);
  err:
     printk(KERN_ERR KMSG_PFX "probe() failed\n");
     return retval;
