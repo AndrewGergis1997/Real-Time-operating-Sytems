@@ -36,6 +36,8 @@ struct irqgen_data *irqgen_data = NULL;
 // Platform driver structure (initialized at the end of the file)
 static struct platform_driver irqgen_pdriver;
 
+#define DEVICE_NAME "irqgen"
+
 /* vvvv ---- LKM Parameters vvvv ---- */
 static unsigned int generate_irqs = 0;
 module_param(generate_irqs, uint, 0444);
@@ -307,13 +309,13 @@ static int irqgen_probe(struct platform_device *pdev)
         irqgen_data->intr_idx[i] = i;
 
         /* Register the handle to the relevant IRQ number and the corresponding idx value */
-        retval = _devm_request_irq(
-			&pdev->dev,
-			irq_id,
-			irqgen_irqhandler,
-			0,					/* 0 means read the flag value from the device tree. */
-			DRIVER_NAME,
-			irqgen_reg_base 	/* DONE */
+		retval = devm_request_irq(
+			&pdev->dev, 
+			irq_id, 
+			irqgen_irqhandler, 
+			IRQF_SHARED, 
+			DEVICE_NAME, 
+			&irqgen_data->intr_idx[i]
 		);
         if (retval != 0) {
             printk(KERN_ERR KMSG_PFX
@@ -359,7 +361,7 @@ static const struct of_device_id irqgen_of_ids[] = {
 
 static struct platform_driver irqgen_driver = {
 	.driver = {
-		.name = "irq_gen",
+		.name = DEVICE_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = irqgen_of_ids,
 	},
