@@ -75,9 +75,13 @@ static inline u32 irqgen_read_latency_clk(void)
     return latency;
 }
 
+// Spin lock Declaration
+static spinlock_t irqgen_spinlock;
+
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
 	printk(KERN_INFO KMSG_PFX "Entering IRQ handler.\n");
+	spin_lock(&irqgen_spinlock);
     u32 idx = *(const u32 *)data;
     u32 ack = irqgen_data->intr_acks[idx];
 	printk(KERN_INFO KMSG_PFX "IRQ handler idx: %d.\n", ack);
@@ -102,9 +106,8 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 
     if (irqgen_data->l_cnt < MAX_LATENCIES)
         irqgen_data->latencies[irqgen_data->l_cnt++] = irqgen_read_latency_clk();
-	
-	
 
+	spin_unlock(&irqgen_spinlock);
     return IRQ_HANDLED;
 }
 
