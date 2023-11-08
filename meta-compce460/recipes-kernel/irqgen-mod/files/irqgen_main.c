@@ -308,9 +308,9 @@ static int irqgen_probe(struct platform_device *pdev)
 			&pdev->dev,
 			irq_id,
 			irqgen_irqhandler,
-			IRQF_TRIGGER_HIGH,			/* NOT SURE ABOUT THAT */
+			0,					/* 0 means read the flag value from the device tree. */
 			DRIVER_NAME,
-			irqgen_reg_base /* DONE */
+			irqgen_reg_base 	/* DONE */
 		);
         if (retval != 0) {
             printk(KERN_ERR KMSG_PFX
