@@ -60,7 +60,7 @@ void main(){
         /**
          * Sleep for 1 second
         */
-        sleep(1);
+        usleep(100000);
     } while (!sigint_received);
     
 }
