@@ -1,8 +1,8 @@
 /**
- * @file   irqgen.c
+ * @file   irqgen_main.c
  * @author Nicola Tuveri
- * @date   08 November 2018
- * @version 0.6
+ * @date   15 November 2018
+ * @version 0.7
  * @target_device Xilinx PYNQ-Z1
  * @brief   A stub module to support the IRQ Generator IP block for the
  *          Real-Time System course.
@@ -18,14 +18,16 @@
 #include <asm/io.h>                 // IO operations
 #include <linux/slab.h>             // Kernel slab allocator
 
+#include <linux/ktime.h>            // ktime_get_ns
+
 
 #include "irqgen.h"                 // Shared module specific declarations
 #include <linux/errno.h>			/* ERRNO provider header file */
 
-#define PROP_COMPATIBLE "wapice,irq-gen" // DONE: compatible property for the irqgen device from the devicetree
-#define PROP_WAPICE_INTRACK "wapice,intrack" // DONE: custom intrack property from the devicetree
+#define PROP_COMPATIBLE "wapice,irq-gen"
+#define PROP_WAPICE_INTRACK "wapice,intrack"
 
-#define FPGA_CLOCK_NS   10 /* 1000 / FPGA_CLOCK_MHZ */ // DONE: how many nanoseconds is a FPGA1 clock cycle?
+#define FPGA_CLOCK_NS   10 /* 1000 / FPGA_CLOCK_MHZ */
 
 // Kernel token address to access the IRQ Generator core register
 void __iomem *irqgen_reg_base = NULL;
@@ -69,12 +71,32 @@ static int parse_parameters(void)
 // Returns the latency of last successfully served IRQ, in clock cycles
 static inline u32 irqgen_read_latency_clk(void)
 {
-    // DONE: copy implementation from your EX04 solution
-	printk(KERN_INFO KMSG_PFX "IRQ handler reading IRQ latency\n");
-	u32 cycles = ioread32(IRQGEN_LATENCY_REG);
-	u64 latency = 10 * cycles;
-	printk(KERN_INFO KMSG_PFX "IRQ handler IRQ latency read\n");
-    return latency;
+    return ioread32(IRQGEN_LATENCY_REG);
+}
+
+// Push a new latency value to the circular buffer: runs inside the
+// critical section of the interrupt handler
+static inline
+void irqgen_data_push_latency(int line, u32 latency, u64 timestamp)
+{
+    int wp, rp;
+    struct latency_data s = {
+        .latency = latency,
+        .line = (u8)line,
+        .timestamp = timestamp
+    };
+
+    wp = irqgen_data->wp;
+    rp = irqgen_data->rp;
+
+    irqgen_data->latencies[wp] = s;
+    wp = (wp+1)%MAX_LATENCIES;
+    if (wp == rp) {
+        rp = (rp+1)%MAX_LATENCIES;
+    }
+
+    irqgen_data->wp = wp;
+    irqgen_data->rp = rp;
 }
 
 // Spin lock Declaration
@@ -82,22 +104,18 @@ static spinlock_t irqgen_spinlock;
 
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
-	printk(KERN_INFO KMSG_PFX "Entering IRQ handler.\n");
-	spin_lock(&irqgen_spinlock);
-    u32 idx = *(const u32 *)data;
-    u32 ack = irqgen_data->intr_acks[idx];
-	printk(KERN_INFO KMSG_PFX "IRQ handler idx: %d.\n", ack);
-	
-    u32 regvalue = ioread32(IRQGEN_CTRL_REG);
+
+    u64 timestamp;
+    u32 idx, ack, latency=0, regvalue;
+
+    timestamp = ktime_get_ns();
+    idx = *(const u32 *)data;
+    ack = irqgen_data->intr_acks[idx];
+    regvalue = ioread32(IRQGEN_CTRL_REG);
     regvalue &= ~(IRQGEN_CTRL_REG_F_HANDLED | IRQGEN_CTRL_REG_F_ACK);
     regvalue |= 0
                 | FIELD_PREP(IRQGEN_CTRL_REG_F_HANDLED, 1)
                 | FIELD_PREP(IRQGEN_CTRL_REG_F_ACK, (ack));
-
-	
-    ++irqgen_data->total_handled;
-    ++irqgen_data->intr_handled[idx];
-	printk(KERN_INFO KMSG_PFX "IRQ handler ioread done\n");
 
 # ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "IRQ #%d (idx: %d) received (ACK 0x%0X).\n", irq, idx, ack);
@@ -106,8 +124,14 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
     iowrite32(regvalue, IRQGEN_CTRL_REG);
 	printk(KERN_INFO KMSG_PFX "IRQ handler iowrite done\n");
 
-    if (irqgen_data->l_cnt < MAX_LATENCIES)
-        irqgen_data->latencies[irqgen_data->l_cnt++] = irqgen_read_latency_clk();
+    latency = irqgen_read_latency_clk();
+
+    // TODO: handle concurrency
+    // {{{ CRITICAL SECTION
+    ++irqgen_data->total_handled;
+    ++irqgen_data->intr_handled[idx];
+    irqgen_data_push_latency(idx, latency, timestamp);
+    // }}}
 
 	spin_unlock(&irqgen_spinlock);
     return IRQ_HANDLED;
@@ -116,37 +140,24 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 /* Enable the IRQ Generator */
 void enable_irq_generator(void)
 {
-    // DONE: copy implementation from your EX04 solution
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "Enabling IRQ Generator.\n");
 #endif
-    // DONE: use iowrite32 and the bitfield macroes to modify the register fields
-	printk(KERN_INFO KMSG_PFX "Enabling IRQ Generator.\n");
-	
-	u32 regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 1);
-	iowrite32(regvalue, IRQGEN_CTRL_REG);
-	printk(KERN_INFO KMSG_PFX "IRQ generator enabled.\n");
+    u32 regvalue = FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 1);
+    iowrite32(regvalue, IRQGEN_CTRL_REG);
 }
 
 /* Disable the IRQ Generator */
 void disable_irq_generator(void)
 {
-    // DONE: copy implementation from your EX04 solution
 #ifdef DEBUG
     printk(KERN_INFO KMSG_PFX "Disabling IRQ Generator.\n");
 #endif
-    // DONE: set to zero the `amount` field, then disable the controller
-	
-	u32 regvalue = 0 | FIELD_PREP(IRQGEN_GENIRQ_REG_F_AMOUNT,  0);
-	iowrite32(regvalue, IRQGEN_GENIRQ_REG);
+    u32 regvalue = FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE, 0);
+    iowrite32(regvalue, IRQGEN_CTRL_REG);
 
-	printk(KERN_INFO KMSG_PFX "IRQ amount set to 0.\n");
-	
-    // DONE: use iowrite32 and the bitfield macroes to modify the register fields
-	regvalue = 0 | FIELD_PREP(IRQGEN_CTRL_REG_F_ENABLE,  0);
-	iowrite32(regvalue, IRQGEN_CTRL_REG);
-
-	printk(KERN_INFO KMSG_PFX "IRQ Generator disabled.\n");
+    regvalue = FIELD_PREP(IRQGEN_GENIRQ_REG_F_AMOUNT,  0);
+    iowrite32(regvalue, IRQGEN_GENIRQ_REG);
 }
 
 /* Generate specified amount of interrupts on specified IRQ_F2P line [IRQLINES_AMNT-1:0] */
@@ -157,7 +168,7 @@ void do_generate_irqs(uint16_t amount, uint8_t line, uint16_t delay)
                    | FIELD_PREP(IRQGEN_GENIRQ_REG_F_DELAY,    delay)
                    | FIELD_PREP(IRQGEN_GENIRQ_REG_F_LINE,      line);
 
-    printk(KERN_INFO KMSG_PFX "Generating %u interrupts with IRQ delay %u on line %d.\n",
+    printk(KERN_DEBUG KMSG_PFX "Generating %u interrupts with IRQ delay %u on line %d.\n",
            amount, delay, line);
 
     iowrite32(regvalue, IRQGEN_GENIRQ_REG);
@@ -208,41 +219,31 @@ int _devm_request_irq(struct device *_dev, unsigned int _irq, irq_handler_t _han
 static int irqgen_probe(struct platform_device *pdev)
 {
     int retval = 0;
-    int irqs_count = 0, irqs_acks = 0;
     int i;
+    int irqs_count = 0, irqs_acks = 0;
     struct resource *iomem_range = NULL;
-	
-	printk(KERN_ERR KMSG_PFX "Entering probe.\n");
 
-    // DONE: use DEVM_KZALLOC_HELPER to dinamically allocate irqgen_data (the pointers inside the structure will need separate allocations)
-	DEVM_KZALLOC_HELPER(irqgen_data, pdev, 1, GFP_KERNEL);
-	if(irqgen_data == NULL)
-	{
-		printk(KERN_ERR KMSG_PFX "Could not allocate space for irqgen_data.\n");
-		retval = -ENOMEM;
-		goto err;
-	}	
+    DEVM_KZALLOC_HELPER(irqgen_data, pdev, 1, GFP_KERNEL);
+    DEVM_KZALLOC_HELPER(irqgen_data->latencies, pdev, MAX_LATENCIES, GFP_KERNEL);
 
-    // DONE: platform_get_resource() (and error checking)
-	iomem_range = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if(iomem_range == NULL)
-	{
-		printk(KERN_ERR KMSG_PFX "Could not fetch the space of the irq_gen device.\n");
-		retval = -ENOMEM;
-		goto err;
-	}
+    // TODO: how to protect the shared r/w members of irqgen_data?
 
-    // DONE: devm_ioremap_resource() (and error checking)
-	irqgen_reg_base = devm_ioremap_resource(&pdev->dev, iomem_range);
-	if(irqgen_reg_base == NULL)
-	{
-		printk(KERN_ERR KMSG_PFX "Could not perform ioremap for the device.\n");
-		retval = -ENOMEM;
-		goto err;
-	}
-	printk(KERN_INFO KMSG_PFX "irqgen_reg_base: %x.\n", irqgen_reg_base);
+    iomem_range = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+    if (IS_ERR(iomem_range)) {
+        printk(KERN_ERR KMSG_PFX "platform_get_resource(IORESOURCE_MEM) failed.\n");
+        retval=PTR_ERR(iomem_range);
+        goto err;
+    }
 
-#if 1 // DONE: enable
+    /* Map the IRQ Generator core register with ioremap */
+    irqgen_reg_base = devm_ioremap_resource(&pdev->dev, iomem_range);
+    if (IS_ERR(irqgen_reg_base)) {
+        printk(KERN_ERR KMSG_PFX "devm_ioremap_resource(IORESOURCE_MEM) failed.\n");
+        retval = PTR_ERR(irqgen_reg_base);
+        irqgen_reg_base = NULL;
+        goto err;
+    }
+
     irqs_count = platform_irq_count(pdev);
     irqs_acks = of_property_count_u32_elems(pdev->dev.of_node, PROP_WAPICE_INTRACK);
 
@@ -279,8 +280,10 @@ static int irqgen_probe(struct platform_device *pdev)
 	
 
     irqgen_data->line_count = irqs_count;
-	size_t qty = 16;
-    retval = of_property_read_u32_array(pdev->dev.of_node, PROP_WAPICE_INTRACK, irqgen_data->intr_acks, qty /* DONE */);
+
+    retval = of_property_read_u32_array(pdev->dev.of_node, PROP_WAPICE_INTRACK,
+                                        irqgen_data->intr_acks, irqs_count);
+
     if (retval) {
         printk(KERN_ERR KMSG_PFX
                "Failed to read interrupt ack values from the device tree with %d.\n",
@@ -309,14 +312,11 @@ static int irqgen_probe(struct platform_device *pdev)
         irqgen_data->intr_idx[i] = i;
 
         /* Register the handle to the relevant IRQ number and the corresponding idx value */
-		retval = devm_request_irq(
-			&pdev->dev, 
-			irq_id, 
-			irqgen_irqhandler, 
-			IRQF_SHARED, 
-			DEVICE_NAME, 
-			&irqgen_data->intr_idx[i]
-		);
+
+        retval = _devm_request_irq(&pdev->dev, irq_id, irqgen_irqhandler,
+                                   IRQF_SHARED, DRIVER_NAME,
+                                   &irqgen_data->intr_idx[i]);
+
         if (retval != 0) {
             printk(KERN_ERR KMSG_PFX
                    "devm_request_irq() failed with return value %d "
@@ -332,10 +332,16 @@ static int irqgen_probe(struct platform_device *pdev)
         goto err_sysfs_setup;
     }
 
-    return 0;
-#endif
+    retval = irqgen_cdev_setup(pdev);
+    if (0 != retval) {
+        printk(KERN_ERR KMSG_PFX "chardev setup failed.\n");
+        goto err_cdev_setup;
+    }
 
- /* HINT: We are using devm_ resources: do we need to free them? */
+    return 0;
+
+ err_cdev_setup:
+    irqgen_sysfs_cleanup(pdev);
  err_sysfs_setup:
 	//devm_iounmap(pdev->dev, irqgen_reg_base);
 	irqgen_sysfs_cleanup(pdev);
@@ -348,8 +354,9 @@ static int irqgen_probe(struct platform_device *pdev)
 
 static int irqgen_remove(struct platform_device *pdev)
 {
-    irqgen_sysfs_cleanup(pdev); // DONE: enable
-	//free_irq(IRQGEN_FIRST_IRQ, NULL);
+    irqgen_cdev_cleanup(pdev);
+    irqgen_sysfs_cleanup(pdev);
+
     return 0;
 }
 
@@ -381,19 +388,12 @@ static int32_t __init irqgen_init(void)
         printk(KERN_ERR KMSG_PFX "fatal failure parsing parameters.\n");
         goto err_parse_parameters;
     }
-	
-	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " parameters parsed.\n");
 
-    // DONE: something is missing here
-	//platform_driver_register(&irqgen_driver);
-	retval = platform_driver_probe(&irqgen_driver, irqgen_probe);
-	if(retval != 0) 
-	{
-		printk(KERN_INFO KMSG_PFX DRIVER_LNAME " platform_driver_probe failed with code %d.\n", retval);
-		goto err_platform_driver_probe;
-	}
-	
-	printk(KERN_INFO KMSG_PFX DRIVER_LNAME " platform_driver_probe passed.\n");
+    retval = platform_driver_probe(&irqgen_pdriver, irqgen_probe);
+    if (retval) {
+        printk(KERN_ERR KMSG_PFX "platform_driver_probe() failed\n");
+        goto err_platform_driver_probe;
+    }
 
     /* Enable the IRQ Generator */
     enable_irq_generator();
@@ -428,17 +428,28 @@ static void __exit irqgen_exit(void)
     /* Disable the IRQ Generator */
     disable_irq_generator();
 
-    /* DONE: Unregister the platform driver and associated resources */
-	platform_driver_unregister(&irqgen_driver);
+
+    /* Unregister the platform driver and associated resources */
+    platform_driver_unregister(&irqgen_pdriver);
+
     printk(KERN_INFO KMSG_PFX DRIVER_LNAME " exiting.\n");
 }
 
 
+static const struct of_device_id irqgen_of_ids[] = {
+    { .compatible = PROP_COMPATIBLE, },
+    { /* end of list */ }
+};
 
-
-
-
-
+static struct platform_driver irqgen_pdriver = {
+    .driver = {
+        .name = DRIVER_NAME,
+        .owner = THIS_MODULE,
+        .of_match_table = irqgen_of_ids,
+    },
+    .probe = irqgen_probe,
+    .remove = irqgen_remove,
+};
 
 module_init(irqgen_init);
 module_exit(irqgen_exit);
@@ -450,4 +461,4 @@ MODULE_AUTHOR("Andreas Stergiopoulos <andreas.stergiopoulos@tuni.fi>");
 MODULE_AUTHOR("Andrew Gergis <andrew.gergis@tuni.fi>");
 MODULE_AUTHOR("Jan Lipponen <jan.lipponen@wapice.com>");
 MODULE_AUTHOR("Nicola Tuveri <nicola.tuveri@tut.fi>");
-MODULE_VERSION("0.6");
+MODULE_VERSION("0.7");
