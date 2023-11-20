@@ -100,7 +100,7 @@ void irqgen_data_push_latency(int line, u32 latency, u64 timestamp)
 }
 
 // Spin lock Declaration
-static spinlock_t irqgen_spinlock;
+static spinlock_t irqdata_spinlock;
 
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
@@ -128,9 +128,11 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 
     // TODO: handle concurrency
     // {{{ CRITICAL SECTION
+	spin_lock_irq(&irqdata_spinlock);
     ++irqgen_data->total_handled;
     ++irqgen_data->intr_handled[idx];
     irqgen_data_push_latency(idx, latency, timestamp);
+	spin_unlock_irq(&irqdata_spinlock);
     // }}}
 
 	spin_unlock(&irqgen_spinlock);
@@ -222,6 +224,8 @@ static int irqgen_probe(struct platform_device *pdev)
     int i;
     int irqs_count = 0, irqs_acks = 0;
     struct resource *iomem_range = NULL;
+	
+	spin_lock(&irqdata_spinlock);
 
     DEVM_KZALLOC_HELPER(irqgen_data, pdev, 1, GFP_KERNEL);
     DEVM_KZALLOC_HELPER(irqgen_data->latencies, pdev, MAX_LATENCIES, GFP_KERNEL);
@@ -325,6 +329,8 @@ static int irqgen_probe(struct platform_device *pdev)
             goto err;
         }
     }
+	
+	spin_unlock(&irqdata_spinlock);
 
     retval = irqgen_sysfs_setup(pdev);
     if (0 != retval) {
