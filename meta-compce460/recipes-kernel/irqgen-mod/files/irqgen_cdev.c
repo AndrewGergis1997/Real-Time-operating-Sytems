@@ -21,6 +21,8 @@
 
 #define IRQGEN_CDEV_CLASS "irqgen-class"
 
+static spinlock_t irqgen_spinlock;
+
 struct irqgen_chardev {
     struct cdev cdev;
     dev_t devt;
@@ -122,15 +124,19 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
         return -ENOBUFS;
     }
 
-    // TODO: how to protect access to shared r/w members of irqgen_data?
+    // DONE: how to protect access to shared r/w members of irqgen_data?
 
+	spin_lock(&irqgen_spinlock);
+	
     if (irqgen_data->rp == irqgen_data->wp) {
         // Nothing to read
         return 0;
     }
-
+	
     v = irqgen_data->latencies[irqgen_data->rp];
     irqgen_data->rp = (irqgen_data->rp + 1)%MAX_LATENCIES;
+	
+	spin_unlock(&irqgen_spinlock);
 
     ret = scnprintf(kbuf, KBUF_SIZE, "%u,%lu,%llu\n", v.line, v.latency, v.timestamp);
     if (ret < 0) {

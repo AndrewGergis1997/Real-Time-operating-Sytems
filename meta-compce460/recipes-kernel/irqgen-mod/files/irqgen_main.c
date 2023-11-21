@@ -100,7 +100,7 @@ void irqgen_data_push_latency(int line, u32 latency, u64 timestamp)
 }
 
 // Spin lock Declaration
-static spinlock_t irqdata_spinlock;
+static spinlock_t irqgen_spinlock;
 
 static irqreturn_t irqgen_irqhandler(int irq, void *data)
 {
@@ -127,15 +127,14 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
     latency = irqgen_read_latency_clk();
 
     // TODO: handle concurrency
+	spin_lock_irq(&irqgen_spinlock);
     // {{{ CRITICAL SECTION
-	spin_lock_irq(&irqdata_spinlock);
     ++irqgen_data->total_handled;
     ++irqgen_data->intr_handled[idx];
     irqgen_data_push_latency(idx, latency, timestamp);
-	spin_unlock_irq(&irqdata_spinlock);
     // }}}
-
-	spin_unlock(&irqgen_spinlock);
+	spin_unlock_irq(&irqgen_spinlock);
+	
     return IRQ_HANDLED;
 }
 
@@ -225,10 +224,12 @@ static int irqgen_probe(struct platform_device *pdev)
     int irqs_count = 0, irqs_acks = 0;
     struct resource *iomem_range = NULL;
 	
-	spin_lock(&irqdata_spinlock);
+	spin_lock(&irqgen_spinlock);
 
     DEVM_KZALLOC_HELPER(irqgen_data, pdev, 1, GFP_KERNEL);
     DEVM_KZALLOC_HELPER(irqgen_data->latencies, pdev, MAX_LATENCIES, GFP_KERNEL);
+	
+	spin_unlock(&irqgen_spinlock);
 
     // TODO: how to protect the shared r/w members of irqgen_data?
 
@@ -270,6 +271,7 @@ static int irqgen_probe(struct platform_device *pdev)
         goto err;
     }
 
+	spin_lock(&irqgen_spinlock);
     DEVM_KZALLOC_HELPER(irqgen_data->intr_ids,
                         pdev, irqs_count, GFP_KERNEL);
     DEVM_KZALLOC_HELPER(irqgen_data->intr_idx,
@@ -280,10 +282,10 @@ static int irqgen_probe(struct platform_device *pdev)
                         pdev, irqs_count, GFP_KERNEL);
 	DEVM_KZALLOC_HELPER(irqgen_data->latencies,
                         pdev, MAX_LATENCIES, GFP_KERNEL);
-	irqgen_data->l_cnt = 0;
+	irqgen_data->line_count = 0;
 	
-
     irqgen_data->line_count = irqs_count;
+	spin_unlock(&irqgen_spinlock);
 
     retval = of_property_read_u32_array(pdev->dev.of_node, PROP_WAPICE_INTRACK,
                                         irqgen_data->intr_acks, irqs_count);
@@ -312,8 +314,10 @@ static int irqgen_probe(struct platform_device *pdev)
             goto err;
         }
 
+		spin_lock(&irqgen_spinlock);
         irqgen_data->intr_ids[i] = irq_id;
         irqgen_data->intr_idx[i] = i;
+		spin_unlock(&irqgen_spinlock);
 
         /* Register the handle to the relevant IRQ number and the corresponding idx value */
 
@@ -329,8 +333,6 @@ static int irqgen_probe(struct platform_device *pdev)
             goto err;
         }
     }
-	
-	spin_unlock(&irqdata_spinlock);
 
     retval = irqgen_sysfs_setup(pdev);
     if (0 != retval) {
@@ -366,21 +368,7 @@ static int irqgen_remove(struct platform_device *pdev)
     return 0;
 }
 
-// DONE: glue together the platform driver and the device-tree (use PROP_COMPATIBLE)
-static const struct of_device_id irqgen_of_ids[] = {
-	{ .compatible = PROP_COMPATIBLE,},
-	{/* end of list */}
-};
 
-static struct platform_driver irqgen_driver = {
-	.driver = {
-		.name = DEVICE_NAME,
-		.owner = THIS_MODULE,
-		.of_match_table = irqgen_of_ids,
-	},
-	.probe = irqgen_probe,
-	.remove = irqgen_remove,
-};
 
 // The kernel module init function
 static int32_t __init irqgen_init(void)
