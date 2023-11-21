@@ -16,6 +16,7 @@
 # include <linux/cdev.h>             // Header for character devices support
 # include <linux/fs.h>               // Header for Linux file system support
 # include <linux/uaccess.h>          // Header for userspace access support
+#include <linux/errno.h>			/* ERRNO provider header file */
 
 # include "irqgen.h"                 // Shared module specific declarations
 
@@ -30,6 +31,7 @@ struct irqgen_chardev {
     struct class *class;
 
     // TODO: do we need a sync mechanism for any cdev operation?
+    // I do not see any thing to be protected here 
 };
 
 static struct irqgen_chardev irqgen_chardev;
@@ -50,30 +52,75 @@ int irqgen_cdev_setup(struct platform_device *pdev)
 {
     int ret;
 
+    // Initialize the cdev structure with fops*/
     cdev_init(&irqgen_chardev.cdev, &fops);
+    // Register a device (cdev structure) with VFS */
     irqgen_chardev.cdev.owner = THIS_MODULE;
     irqgen_chardev.cdev.kobj.parent = &pdev->dev.kobj;
+    
 
-    // TODO: dinamically allocate a major and a minor for this chrdev
+    // DONE: dinamically allocate a major and a minor for this chrdev
+    ret = alloc_chrdev_region(&irqgen_chardev.devt, 0, 1, "mychardev");
+    
     // don't forget error handling
-
-    // TODO: add to the system the cdev for the allocated (major,minor)
+    if(ret < 0){
+        printk("Dynamic allocation of major and a minor for this chrdev failed");
+        goto out;
+    }
+    
+    
+    // DONE: add to the system the cdev for the allocated (major,minor)
+    ret = cdev_add(&irqgen_chardev.cdev, irqgen_chardev.devt, 1);
+               
     // don't forget error handling
+    if(ret < 0){
+        printk("Adding cdev to the system failed");
+        goto unreg_chrdev;
+    }
 
     // Add an "irqgen" node in the /dev/ filesystem (hint: device_create())
     // don't forget error handling
-
+    irqgen_chardev.class = class_create(THIS_MODULE,"pcd_class");
+    if(IS_ERR(irqgen_chardev.class)){
+        printk("Class creation failed");
+        ret = PTR_ERR(irqgen_chardev.class);
+        goto cdev_del;
+    }
+               
+               
+    irqgen_chardev.dev = device_create(irqgen_chardev.class,NULL,irqgen_chardev.devt,NULL,"pcd");
+    if(IS_ERR(irqgen_chardev.dev)){
+        printk("device creation failed");
+        ret = PTR_ERR(irqgen_chardev.dev);
+        goto class_dest;
+    }
     // TODO: do we need a sync mechanism for any cdev operation?
-
+               
+               
+    printk("Module initialization was successful\n");
     return 0;
 
-    // TODO: use labels to handle errors and undo any resource allocation
+    // DONE: use labels to handle errors and undo any resource allocation
+class_dest:
+    class_destroy(irqgen_chardev.class); 
+               
+cdev_del:
+    cdev_del(&irqgen_chardev.cdev);           
+               
+unreg_chrdev:           
+    unregister_chrdev_region(&irqgen_chardev.cdev,1);           
+               
+out:
+    return ret;
 }
 
 void irqgen_cdev_cleanup(struct platform_device *pdev)
 {
     // destroy, unregister and free, in the right order, all resources
     // allocated in irqgen_cdev_setup()
+    class_destroy(irqgen_chardev.class);
+    cdev_del(&irqgen_chardev.cdev);
+    unregister_chrdev_region(irqgen_chardev.devt,1);
 }
 
 static u8 already_opened = 0;
@@ -147,6 +194,11 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
     }
 
     // TODO: how to transfer from kernel space to user space?
+    if (copy_to_user(ubuf, kbuf, count)){
+        ret = -EFAULT;
+        goto end;
+    }
+    
     *f_pos += ret;
 
  end:

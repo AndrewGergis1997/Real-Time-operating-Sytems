@@ -126,7 +126,7 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 
     latency = irqgen_read_latency_clk();
 
-    // TODO: handle concurrency
+    // DONE: handle concurrency
 	spin_lock_irq(&irqgen_spinlock);
     // {{{ CRITICAL SECTION
     ++irqgen_data->total_handled;
@@ -231,7 +231,7 @@ static int irqgen_probe(struct platform_device *pdev)
 	
 	spin_unlock(&irqgen_spinlock);
 
-    // TODO: how to protect the shared r/w members of irqgen_data?
+    // DONE: how to protect the shared r/w members of irqgen_data?
 
     iomem_range = platform_get_resource(pdev, IORESOURCE_MEM, 0);
     if (IS_ERR(iomem_range)) {
