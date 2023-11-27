@@ -60,7 +60,7 @@ int irqgen_cdev_setup(struct platform_device *pdev)
     
 
     // DONE: dinamically allocate a major and a minor for this chrdev
-    ret = alloc_chrdev_region(&irqgen_chardev.devt, 0, 1, "mychardev");
+    ret = alloc_chrdev_region(&irqgen_chardev.devt, 0, 1, "irqgen");
     
     // don't forget error handling
     if(ret < 0){
@@ -88,16 +88,18 @@ int irqgen_cdev_setup(struct platform_device *pdev)
     }
                
                
-    irqgen_chardev.dev = device_create(irqgen_chardev.class,NULL,irqgen_chardev.devt,NULL,"pcd");
+    irqgen_chardev.dev = device_create(irqgen_chardev.class,NULL,irqgen_chardev.devt,NULL,"irqgen");
     if(IS_ERR(irqgen_chardev.dev)){
         printk("device creation failed");
         ret = PTR_ERR(irqgen_chardev.dev);
         goto class_dest;
     }
+
+	cdev_init(&irqgen_chardev.cdev, &fops);
     // TODO: do we need a sync mechanism for any cdev operation?
                
                
-    printk("Module initialization was successful\n");
+    printk("IRQGEN: Character device initialization was successful\n");
     return 0;
 
     // DONE: use labels to handle errors and undo any resource allocation
@@ -185,6 +187,9 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
 	
 	spin_unlock(&irqgen_spinlock);
 
+	/*	
+		scnprintf returns the number of bytes copied to the buffer
+	*/
     ret = scnprintf(kbuf, KBUF_SIZE, "%u,%lu,%llu\n", v.line, v.latency, v.timestamp);
     if (ret < 0) {
         goto end;
@@ -194,7 +199,7 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
     }
 
     // TODO: how to transfer from kernel space to user space?
-    if (copy_to_user(ubuf, kbuf, count)){
+    if (copy_to_user(ubuf, kbuf, ret + 1)){
         ret = -EFAULT;
         goto end;
     }
