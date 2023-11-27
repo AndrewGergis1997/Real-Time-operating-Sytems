@@ -3,7 +3,7 @@ tester:
 	gcc stat_tester.c -o stat_tester
 	
 app:
-	gcc statistics_app.c -o statistics_app
+	$(CC) statistics_app.c -o statistics_app
 	
 target:
 	echo "Not yet specified!"
