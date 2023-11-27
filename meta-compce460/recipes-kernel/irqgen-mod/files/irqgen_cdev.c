@@ -163,34 +163,49 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
     // in kernel space and then use specialized functions to copy the
     // data to provided the userland buffer.
 #define KBUF_SIZE 100
-    static char kbuf[KBUF_SIZE];
+    char kbuf[KBUF_SIZE];
     ssize_t ret = 0;
 
-    struct latency_data v;
+	printk("IRQGEN: irqgen_cdev_read\n");
 
-    if (count < 60) {
+    //struct latency_data v;
+
+    /*if (count < 60) {
         printk(KERN_ERR KMSG_PFX "read() buffer too small (<=60).\n");
         return -ENOBUFS;
-    }
+    }*/
 
     // DONE: how to protect access to shared r/w members of irqgen_data?
 
 	spin_lock(&irqgen_spinlock);
-	
-    if (irqgen_data->rp == irqgen_data->wp) {
+
+	int rp = irqgen_data->rp;
+	int wp = irqgen_data->wp;
+
+    if (rp == wp) {
         // Nothing to read
+		printk("IRQGEN: if (rp == wp)\n");
+		/*
+		* Apparently returning 0 causes a segmentation fault!			
+		*/
         return 0;
     }
+
+	struct latency_data v;
 	
     v = irqgen_data->latencies[irqgen_data->rp];
     irqgen_data->rp = (irqgen_data->rp + 1)%MAX_LATENCIES;
 	
 	spin_unlock(&irqgen_spinlock);
 
+	printk("IRQGEN: irqgen_cdev_read marker 2\n");
+
+
 	/*	
-		scnprintf returns the number of bytes copied to the buffer
+	*	scnprintf returns the number of characters (excluding \0) copied to the buffer
 	*/
     ret = scnprintf(kbuf, KBUF_SIZE, "%u,%lu,%llu\n", v.line, v.latency, v.timestamp);
+	printk("IRQGEN: Writing data to output\n");
     if (ret < 0) {
         goto end;
     } else if (ret == 0) {
