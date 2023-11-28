@@ -28,6 +28,7 @@ struct latency_data {
     u64 timestamp;
 };
 
+
 /*-
  * Structure for module data
  *
@@ -49,8 +50,7 @@ struct irqgen_data {
     u32 *intr_idx;
     u32 *intr_acks;
 
-    // TODO: how to protect the shared r/w members of this structure?
-
+    // DONE: how to protect the shared r/w members of this structure?
     /* The members below must be protected from concurrent access */
     u32 *intr_handled;
     u32 total_handled;

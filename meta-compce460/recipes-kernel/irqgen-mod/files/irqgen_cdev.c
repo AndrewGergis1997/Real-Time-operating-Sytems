@@ -30,8 +30,7 @@ struct irqgen_chardev {
     struct device *dev;
     struct class *class;
 
-    // TODO: do we need a sync mechanism for any cdev operation?
-    // I do not see any thing to be protected here 
+    // DONE: do we need a sync mechanism for any cdev operation?
 };
 
 static struct irqgen_chardev irqgen_chardev;
@@ -51,58 +50,65 @@ static struct file_operations fops = {
 int irqgen_cdev_setup(struct platform_device *pdev)
 {
     int ret;
-
+    
     // Initialize the cdev structure with fops*/
     cdev_init(&irqgen_chardev.cdev, &fops);
     // Register a device (cdev structure) with VFS */
     irqgen_chardev.cdev.owner = THIS_MODULE;
     irqgen_chardev.cdev.kobj.parent = &pdev->dev.kobj;
     
-
-    // DONE: dinamically allocate a major and a minor for this chrdev
-    ret = alloc_chrdev_region(&irqgen_chardev.devt, 0, 1, "irqgen");
     
+    // DONE: dinamically allocate a major and a minor for this chrdev
+    //spin_lock(&irqgen_spinlock);
+    ret = alloc_chrdev_region(&irqgen_chardev.devt, 0, 1, "irqgen");
+    //spin_unlock(&irqgen_spinlock);
     // don't forget error handling
     if(ret < 0){
         printk("Dynamic allocation of major and a minor for this chrdev failed");
-        goto out;
+        goto unreg_chrdev;
     }
     
     
     // DONE: add to the system the cdev for the allocated (major,minor)
+    //spin_lock(&irqgen_spinlock);
     ret = cdev_add(&irqgen_chardev.cdev, irqgen_chardev.devt, 1);
+    //spin_unlock(&irqgen_spinlock);
                
     // don't forget error handling
     if(ret < 0){
         printk("Adding cdev to the system failed");
-        goto unreg_chrdev;
+        goto cdev_del;
     }
 
     // Add an "irqgen" node in the /dev/ filesystem (hint: device_create())
     // don't forget error handling
+    //spin_lock(&irqgen_spinlock);
     irqgen_chardev.class = class_create(THIS_MODULE,"pcd_class");
+    //spin_unlock(&irqgen_spinlock);
     if(IS_ERR(irqgen_chardev.class)){
         printk("Class creation failed");
         ret = PTR_ERR(irqgen_chardev.class);
-        goto cdev_del;
-    }
-               
-               
-    irqgen_chardev.dev = device_create(irqgen_chardev.class,NULL,irqgen_chardev.devt,NULL,"irqgen");
-    if(IS_ERR(irqgen_chardev.dev)){
-        printk("device creation failed");
-        ret = PTR_ERR(irqgen_chardev.dev);
         goto class_dest;
     }
-
-	cdev_init(&irqgen_chardev.cdev, &fops);
-    // TODO: do we need a sync mechanism for any cdev operation?
+               
+    //spin_lock(&irqgen_spinlock);           
+    irqgen_chardev.dev = device_create(irqgen_chardev.class,NULL,irqgen_chardev.devt,NULL,"irqgen");
+	//spin_unlock(&irqgen_spinlock);
+    if(IS_ERR(irqgen_chardev.dev)){
+        printk("device creation failed/n");
+        ret = PTR_ERR(irqgen_chardev.dev);
+        goto device_dest;
+    }
+    // DONE: do we need a sync mechanism for any cdev operation?
                
                
     printk("IRQGEN: Character device initialization was successful\n");
     return 0;
 
     // DONE: use labels to handle errors and undo any resource allocation
+device_dest:
+    device_destroy(irqgen_chardev.class, irqgen_chardev.devt);
+
 class_dest:
     class_destroy(irqgen_chardev.class); 
                
@@ -111,8 +117,6 @@ cdev_del:
                
 unreg_chrdev:           
     unregister_chrdev_region(&irqgen_chardev.cdev,1);           
-               
-out:
     return ret;
 }
 
@@ -120,6 +124,7 @@ void irqgen_cdev_cleanup(struct platform_device *pdev)
 {
     // destroy, unregister and free, in the right order, all resources
     // allocated in irqgen_cdev_setup()
+    device_destroy(irqgen_chardev.class, irqgen_chardev.devt);
     class_destroy(irqgen_chardev.class);
     cdev_del(&irqgen_chardev.cdev);
     unregister_chrdev_region(irqgen_chardev.devt,1);
@@ -163,42 +168,41 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
     // in kernel space and then use specialized functions to copy the
     // data to provided the userland buffer.
 #define KBUF_SIZE 100
-    char kbuf[KBUF_SIZE];
+    static char kbuf[KBUF_SIZE];
     ssize_t ret = 0;
 
-	printk("IRQGEN: irqgen_cdev_read\n");
+    //printk("IRQGEN: irqgen_cdev_read\n");
 
-    //struct latency_data v;
+    struct latency_data v;
 
-    /*if (count < 60) {
+    if (count < 60) {
         printk(KERN_ERR KMSG_PFX "read() buffer too small (<=60).\n");
         return -ENOBUFS;
-    }*/
+    }
 
     // DONE: how to protect access to shared r/w members of irqgen_data?
+    spin_lock(&irqgen_spinlock);
 
-	spin_lock(&irqgen_spinlock);
 
 	int rp = irqgen_data->rp;
 	int wp = irqgen_data->wp;
 
+    
     if (rp == wp) {
         // Nothing to read
-		printk("IRQGEN: if (rp == wp)\n");
-		/*
-		* Apparently returning 0 causes a segmentation fault!			
-		*/
+		//printk("IRQGEN: if (rp == wp)\n");
         return 0;
     }
 
-	struct latency_data v;
-	
+    
+	//spin_lock(&irqgen_spinlock);
+
     v = irqgen_data->latencies[irqgen_data->rp];
     irqgen_data->rp = (irqgen_data->rp + 1)%MAX_LATENCIES;
-	
+
 	spin_unlock(&irqgen_spinlock);
 
-	printk("IRQGEN: irqgen_cdev_read marker 2\n");
+	//printk("IRQGEN: irqgen_cdev_read marker 2\n");
 
 
 	/*	
@@ -213,8 +217,9 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
         goto end;
     }
 
-    // TODO: how to transfer from kernel space to user space?
-    if (copy_to_user(ubuf, kbuf, ret + 1)){
+    // DONE: how to transfer from kernel space to user space?
+	//copy_to_user(ubuf, kbuf, count);    
+	if (copy_to_user(ubuf, kbuf, min_t(size_t, count, KBUF_SIZE))){
         ret = -EFAULT;
         goto end;
     }

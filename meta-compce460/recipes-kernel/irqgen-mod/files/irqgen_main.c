@@ -224,16 +224,17 @@ static int irqgen_probe(struct platform_device *pdev)
     int irqs_count = 0, irqs_acks = 0;
     struct resource *iomem_range = NULL;
 	
-	spin_lock(&irqgen_spinlock);
+	
 
     DEVM_KZALLOC_HELPER(irqgen_data, pdev, 1, GFP_KERNEL);
     DEVM_KZALLOC_HELPER(irqgen_data->latencies, pdev, MAX_LATENCIES, GFP_KERNEL);
-	
-	spin_unlock(&irqgen_spinlock);
 
     // DONE: how to protect the shared r/w members of irqgen_data?
-
+    spin_lock_irq(&irqgen_spinlock);
     iomem_range = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+    
+    spin_unlock_irq(&irqgen_spinlock);
+    
     if (IS_ERR(iomem_range)) {
         printk(KERN_ERR KMSG_PFX "platform_get_resource(IORESOURCE_MEM) failed.\n");
         retval=PTR_ERR(iomem_range);
@@ -271,7 +272,7 @@ static int irqgen_probe(struct platform_device *pdev)
         goto err;
     }
 
-	spin_lock(&irqgen_spinlock);
+	//spin_lock(&irqgen_spinlock);
     DEVM_KZALLOC_HELPER(irqgen_data->intr_ids,
                         pdev, irqs_count, GFP_KERNEL);
     DEVM_KZALLOC_HELPER(irqgen_data->intr_idx,
@@ -285,7 +286,7 @@ static int irqgen_probe(struct platform_device *pdev)
 	irqgen_data->line_count = 0;
 	
     irqgen_data->line_count = irqs_count;
-	spin_unlock(&irqgen_spinlock);
+	//spin_unlock(&irqgen_spinlock);
 
     retval = of_property_read_u32_array(pdev->dev.of_node, PROP_WAPICE_INTRACK,
                                         irqgen_data->intr_acks, irqs_count);

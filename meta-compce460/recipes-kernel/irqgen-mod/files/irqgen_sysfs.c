@@ -23,6 +23,8 @@
 # define IRQGEN_ATTR_RW DEVICE_ATTR_RW
 # define IRQGEN_ATTR_WO DEVICE_ATTR_WO
 
+static spinlock_t irqgen_spinlock_sysfs;
+
 static ssize_t line_count_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
     return sprintf(buf, "%d\n", irqgen_data->line_count);
@@ -72,15 +74,16 @@ static ssize_t intr_handled_show(struct device *dev, struct device_attribute *at
 {
     ssize_t ret=0, acc=0;
     int i;
-
     for (i=0; i<irqgen_data->line_count; ++i) {
         u32 v;
-
+        spin_lock_irq(&irqgen_spinlock_sysfs);
         v = irqgen_data->intr_handled[i]; // TODO: protect concurrent accesses to r/w shared members of irqge_data
-
+        spin_unlock_irq(&irqgen_spinlock_sysfs);
         ret = sprintf(buf+acc, "%u ", v);
         acc += ret;
+        
     }
+
     *(buf+acc-1)='\n';
     return acc;
 }
@@ -101,11 +104,11 @@ static ssize_t latency_show(struct device *dev, struct device_attribute *attr, c
 IRQGEN_ATTR_RO(latency);
 
 static ssize_t total_handled_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
+{   
     u32 v;
-
+    spin_lock_irq(&irqgen_spinlock_sysfs);
     v = irqgen_data->total_handled; // TODO: protect concurrent accesses to r/w shared members of irqge_data
-
+    spin_unlock_irq(&irqgen_spinlock_sysfs);
     return sprintf(buf, "%u\n", v);
 }
 IRQGEN_ATTR_RO(total_handled);
