@@ -122,7 +122,7 @@ static irqreturn_t irqgen_irqhandler(int irq, void *data)
 # endif
 
     iowrite32(regvalue, IRQGEN_CTRL_REG);
-	printk(KERN_INFO KMSG_PFX "IRQ handler iowrite done\n");
+	//printk(KERN_INFO KMSG_PFX "IRQ handler iowrite done\n");
 
     latency = irqgen_read_latency_clk();
 

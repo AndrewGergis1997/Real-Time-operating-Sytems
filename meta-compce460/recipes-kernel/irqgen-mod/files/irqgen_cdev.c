@@ -183,14 +183,16 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
     // DONE: how to protect access to shared r/w members of irqgen_data?
     spin_lock(&irqgen_spinlock);
 
-
 	int rp = irqgen_data->rp;
 	int wp = irqgen_data->wp;
+	
+	//spin_unlock(&irqgen_spinlock);
 
     
     if (rp == wp) {
         // Nothing to read
 		//printk("IRQGEN: if (rp == wp)\n");
+		spin_unlock(&irqgen_spinlock);
         return 0;
     }
 
@@ -209,7 +211,7 @@ static ssize_t irqgen_cdev_read(struct file *fp, char *ubuf, size_t count, loff_
 	*	scnprintf returns the number of characters (excluding \0) copied to the buffer
 	*/
     ret = scnprintf(kbuf, KBUF_SIZE, "%u,%lu,%llu\n", v.line, v.latency, v.timestamp);
-	printk("IRQGEN: Writing data to output\n");
+	//printk("IRQGEN: Writing data to output\n");
     if (ret < 0) {
         goto end;
     } else if (ret == 0) {
