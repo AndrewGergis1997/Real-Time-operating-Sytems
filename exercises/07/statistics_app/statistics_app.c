@@ -143,15 +143,38 @@ void main(){
 		write(STDOUT_FILENO, out_buf, bytes_written);
         fflush(stdout);
 	}
-
-	bytes_written = sprintf(
-		out_buf, 
-		"%d, %d, %f, %d\n",
-		-1,
-		total_occurences,
-		average_latency / IRQ_LINES,
-		max_latency
-	);
+	
+	int non_zero_lines = 0;
+	for (int i=0; i<IRQ_LINES; i++)
+	{
+		if (aggregator.line_occurences[i] != 0)
+		{
+			non_zero_lines++;
+		}
+	}
+	
+	if(non_zero_lines != 0)
+	{
+		bytes_written = sprintf(
+			out_buf, 
+			"%d, %d, %f, %d\n",
+			-1,
+			total_occurences,
+			average_latency / non_zero_lines,
+			max_latency
+		);
+	}
+	else
+	{
+		bytes_written = sprintf(
+			out_buf, 
+			"%d, %d, %f, %d\n",
+			-1,
+			total_occurences,
+			average_latency,
+			max_latency
+		);
+	}
 
 	write(STDOUT_FILENO, out_buf, bytes_written);
     fflush(stdout);
