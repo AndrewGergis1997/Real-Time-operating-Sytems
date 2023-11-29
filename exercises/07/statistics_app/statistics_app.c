@@ -4,7 +4,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-#define BUF_SIZE 100
+#define BUF_SIZE 500
 #define IRQ_LINES 16
 
 volatile sig_atomic_t sigint_received = false;
@@ -22,10 +22,13 @@ struct stats
 };
 
 void main(){
+	printf("Statistics app\n");
+
     /**
      * Write buffer
     */
     char buf[BUF_SIZE];
+	char out_buf[BUF_SIZE];
 
     /**
      * Data variables
@@ -57,40 +60,50 @@ void main(){
     */
     signal(SIGINT, sigint_handler);
 
-    do
-    {
+    
+    while(!sigint_received){
         /**
 		* Read input from stdin
 		*/
-		bytes_read = read(STDIN_FILENO, buf, BUF_SIZE);
-		
-        /**
-         * Read data from formatted string
-        */
-        bytes_read = sscanf(
-			buf, 
-			"%d, %d, %d\n", 
-			&irq_line, 
-			&latency, 
-			&timestamp_current
-		);
-		
-		/**
-		 * Compile statistics
-		*/
-		latency = timestamp_current - timestamp_previous;
-		timestamp_previous = timestamp_current;
-		
-		aggregator.line_occurences[irq_line]++;
-		aggregator.latency_average[irq_line] += latency;
-		
-		if (aggregator.latency_max[irq_line] < latency) 
+		if (fgets(buf, BUF_SIZE, stdin) != NULL)
 		{
-			aggregator.latency_max[irq_line] = latency;
+			
+		    /**
+		     * Read data from formatted string
+		    */
+		    sscanf(
+				buf, 
+				"%d, %d, %d\n", 
+				&irq_line, 
+				&latency, 
+				&timestamp_current
+			);
+
+			printf(
+				"read: %d, %d, %d\n", 
+				irq_line, 
+				latency, 
+				timestamp_current
+			);
+			
+			/**
+			 * Compile statistics
+			*/
+			//latency = timestamp_current - timestamp_previous;
+			//timestamp_previous = timestamp_current;
+			
+			aggregator.line_occurences[irq_line]++;
+			aggregator.latency_average[irq_line] += latency;
+			
+			if (aggregator.latency_max[irq_line] < latency) 
+			{
+				aggregator.latency_max[irq_line] = latency;
+			}
 		}
 		
-		
-    } while (!sigint_received);
+    }
+
+	printf("Sigint received\n");
 	
 	/**
 	* Calculate the mean leatency
@@ -105,26 +118,42 @@ void main(){
 	/**
 	 * Print the statistics for each IRQ line
 	*/
-	FILE* out_file = NULL;
-	
-	out_file = fopen("statistics.csv", "w");
-	
-	if (out_file == NULL)
-	{
-		printf("Statistics app: Failed to open output file!");
-		exit(-1);
-	}
+	int total_occurences = 0;
+	int max_latency = 0;
+	float average_latency = 0.0f;
 	
 	for (int i=0; i<IRQ_LINES; i++)
 	{
-		fprintf(
-			out_file, 
+		bytes_written = sprintf(
+			out_buf, 
 			"%d, %d, %f, %d\n",
 			i,
 			aggregator.line_occurences[i],
 			aggregator.latency_average[i],
 			aggregator.latency_max[i]
 		);
+
+		total_occurences += aggregator.line_occurences[i];
+		average_latency += aggregator.latency_average[i];
+		if (aggregator.latency_max[i] > max_latency)
+		{
+			max_latency = aggregator.latency_max[i];
+		}
+
+		write(STDOUT_FILENO, out_buf, bytes_written);
+        fflush(stdout);
 	}
+
+	bytes_written = sprintf(
+		out_buf, 
+		"%d, %d, %f, %d\n",
+		-1,
+		total_occurences,
+		average_latency / IRQ_LINES,
+		max_latency
+	);
+
+	write(STDOUT_FILENO, out_buf, bytes_written);
+    fflush(stdout);
     
 }

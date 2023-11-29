@@ -10,3 +10,6 @@ target:
 	
 clean:
 	rm statistics.csv statistics_app stat_tester
+	
+hello:
+	$(CC) hello.c -o hello
