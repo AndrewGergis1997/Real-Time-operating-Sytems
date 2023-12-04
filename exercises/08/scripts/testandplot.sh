@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # IP address of the running PYNQ board
-ip_address=0.0.0.0
+ip_address=172.16.42.101
 
 PYNQ_DIR=/root/rt-scripts
 DESTFILE=latencies.csv

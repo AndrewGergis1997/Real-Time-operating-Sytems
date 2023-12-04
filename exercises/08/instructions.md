@@ -44,7 +44,7 @@ The username and (very secure) password for the VM account are: `student`/`stude
     - Prefer a .patch.xz file
   - [x] Include the SHA256SUM for both files to ensure integrity check
   - [x] Bitbake `core-image-minimal` as usual
-- [ ] Answer questions 3, 4 and 5
+- [x] Answer questions 3, 4 and 5
 - Enable local network [connection](lab_nic_setup.md)
 - Familiarize with the contents of [scripts/](./scripts/)
 - Run [scripts/testandplot.sh](scripts/testandplot.sh) in the following scenarios (for each save the csv, the metadata and the plot in the repository. You might want to reboot the PYNQ board in-between runs):
