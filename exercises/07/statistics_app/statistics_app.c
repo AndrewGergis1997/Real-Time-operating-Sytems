@@ -22,7 +22,6 @@ struct stats
 };
 
 void main(){
-	printf("Statistics app\n");
 
     /**
      * Write buffer
@@ -92,8 +91,6 @@ void main(){
 		}
 		
     }
-
-	printf("Sigint received\n");
 	
 	/**
 	* Calculate the mean leatency
