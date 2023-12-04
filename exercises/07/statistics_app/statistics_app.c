@@ -78,20 +78,10 @@ void main(){
 				&latency, 
 				&timestamp_current
 			);
-
-			printf(
-				"read: %d, %d, %d\n", 
-				irq_line, 
-				latency, 
-				timestamp_current
-			);
 			
 			/**
 			 * Compile statistics
 			*/
-			//latency = timestamp_current - timestamp_previous;
-			//timestamp_previous = timestamp_current;
-			
 			aggregator.line_occurences[irq_line]++;
 			aggregator.latency_average[irq_line] += latency;
 			
