@@ -28,22 +28,22 @@ The username and (very secure) password for the VM account are: `student`/`stude
 
 # Checklist
 
-- [ ] preparations to resume your work
-  - [ ] clone your repository, <u>with its submodules!</u>
+- [x] preparations to resume your work
+  - [x] clone your repository, <u>with its submodules!</u>
     - **Hint**: check the updated instructions in the main README of [course_upstream]
-  - [ ] pull the changes published in [course_upstream] using the provided script
-  - [ ] remember to specify the path for the proper `build` folder when sourcing the Yocto script for setting up the build environment
-  - [ ] build `core-image-minimal` once again, to verify that everything works.
+  - [x] pull the changes published in [course_upstream] using the provided script
+  - [x] remember to specify the path for the proper `build` folder when sourcing the Yocto script for setting up the build environment
+  - [x] build `core-image-minimal` once again, to verify that everything works.
 - **DO NOT USE `irqgen_dbg` for this exercise, stick to the non debug version for any measurement**
 - Answer question 1
 - Answer question 2 (use [this script](../07/statistics_app/measuring.sh) to collect the measurements, ignore the "buffer too small" warnings)
-- [ ] In `meta-compce460`, extend the `linux-xlnx` recipe with a `.bbappend` file
-  - [ ] Append as a source the provided `rt.conf`
-  - [ ] Append as a source, using an https link, the RT_PREEMPT patch archive
+- [x] In `meta-compce460`, extend the `linux-xlnx` recipe with a `.bbappend` file
+  - [x] Append as a source the provided `rt.conf`
+  - [x] Append as a source, using an https link, the RT_PREEMPT patch archive
     - Pick the URL from [here](https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/), matching your kernel version
     - Prefer a .patch.xz file
-  - [ ] Include the SHA256SUM for both files to ensure integrity check
-  - [ ] Bitbake `core-image-minimal` as usual
+  - [x] Include the SHA256SUM for both files to ensure integrity check
+  - [x] Bitbake `core-image-minimal` as usual
 - [ ] Answer questions 3, 4 and 5
 - Enable local network [connection](lab_nic_setup.md)
 - Familiarize with the contents of [scripts/](./scripts/)
