@@ -24,4 +24,8 @@ Yes, the results differ significantly. The average latency has increased dramati
 ## 8. What is the goal of this exercise? What did you accomplish?
 
 ## 9. Feedback (what was difficult? what was easy? how would you improve it?)
+echo "Adding execute permissions to copied files..."
+ssh root@$ip_address "chmod +x $PYNQ_DIR/*"
+
+Added those commands on line 81 due to permission denied error.
 
