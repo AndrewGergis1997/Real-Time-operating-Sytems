@@ -77,6 +77,10 @@ if [[ ! "$NO_COLLECT" == "true" ]]; then
     echo "Transferring ./pynq/irqtest.sh to the PYNQ board.."
     ssh root@$ip_address "mkdir -p $PYNQ_DIR"
     scp pynq/irqtest.sh root@$ip_address:$PYNQ_DIR/
+	
+	echo "Adding execute permissions to copied files..."
+	ssh root@$ip_address "chmod +x $PYNQ_DIR/*"
+	
     echo ""
     # Insert the IRQ generator driver module to the kernel
     ssh root@$ip_address "/sbin/modprobe $MODNAME"
